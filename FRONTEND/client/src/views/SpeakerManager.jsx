@@ -1,0 +1,806 @@
+import React, { useState } from 'react';
+import {
+  Plus,
+  Trash2,
+  Edit3,
+  Sparkles,
+  User,
+  Building,
+  BookOpen,
+  X,
+  ExternalLink,
+  Search,
+  Tv,
+  Volume2,
+  Copy,
+  Check,
+  Globe,
+  Radio,
+  Clock,
+  Calendar,
+  Layers,
+  ChevronRight,
+  Eye
+} from 'lucide-react';
+import StatusBadge from '../components/ui/StatusBadge';
+import ScriptWorkflowModal from '../components/ScriptWorkflowModal';
+import { useToast } from '../components/ui/ToastContext';
+import EmptyState from '../components/ui/EmptyState';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { getSpeakerAvatar, parseStageScript } from '../utils/formatters';
+import { api } from '../services/api';
+
+export default function SpeakerManager({
+  speakers = [],
+  agenda = [],
+  event,
+  onRefresh,
+  onGenerateScript,
+  onOpenTeleprompter
+}) {
+  const toast = useToast();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [sessionFilter, setSessionFilter] = useState('ALL');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingSpeaker, setEditingSpeaker] = useState(null);
+  const [viewingSpeaker, setViewingSpeaker] = useState(null);
+  const [workflowSpeaker, setWorkflowSpeaker] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Detail Modal Script State
+  const [introScript, setIntroScript] = useState('');
+  const [generatingScript, setGeneratingScript] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    designation: '',
+    organization: '',
+    bio: '',
+    topic: '',
+    avatar_url: '',
+    social_url: ''
+  });
+
+  // Calculate dynamic live status for a speaker based on linked agenda
+  const getSpeakerSession = (speakerId) => {
+    return agenda.find((a) => a.speaker_id === speakerId) || null;
+  };
+
+  const getSpeakerStatus = (speakerId) => {
+    const session = getSpeakerSession(speakerId);
+    if (!session) return 'READY';
+    if (session.status === 'LIVE') return 'ON STAGE';
+    if (session.status === 'COMPLETED') return 'COMPLETED';
+    if (session.status === 'DELAYED') return 'DELAYED';
+    return 'UPCOMING';
+  };
+
+  const filteredSpeakers = speakers.filter((speaker) => {
+    const session = getSpeakerSession(speaker.id);
+    const speakerStatus = getSpeakerStatus(speaker.id);
+
+    // Status filtering
+    const matchesStatus =
+      statusFilter === 'ALL' ||
+      (statusFilter === 'ON STAGE' && speakerStatus === 'ON STAGE') ||
+      (statusFilter === 'READY' && (speakerStatus === 'READY' || speakerStatus === 'UPCOMING')) ||
+      (statusFilter === 'COMPLETED' && speakerStatus === 'COMPLETED') ||
+      (statusFilter === 'DELAYED' && speakerStatus === 'DELAYED');
+
+    // Session filtering
+    const matchesSession =
+      sessionFilter === 'ALL' || (session && String(session.id) === String(sessionFilter));
+
+    // Text search
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      speaker.name.toLowerCase().includes(q) ||
+      speaker.designation.toLowerCase().includes(q) ||
+      speaker.organization.toLowerCase().includes(q) ||
+      (speaker.topic && speaker.topic.toLowerCase().includes(q)) ||
+      (session && session.title.toLowerCase().includes(q));
+
+    return matchesStatus && matchesSession && matchesSearch;
+  });
+
+  const openCreateModal = () => {
+    setEditingSpeaker(null);
+    setFormData({
+      name: '',
+      designation: '',
+      organization: '',
+      bio: '',
+      topic: '',
+      avatar_url: '',
+      social_url: ''
+    });
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (speaker) => {
+    setEditingSpeaker(speaker);
+    setFormData({
+      name: speaker.name,
+      designation: speaker.designation,
+      organization: speaker.organization,
+      bio: speaker.bio || '',
+      topic: speaker.topic || '',
+      avatar_url: speaker.avatar_url || '',
+      social_url: speaker.social_url || ''
+    });
+    setIsModalOpen(true);
+  };
+
+  const openViewDrawer = async (speaker) => {
+    setViewingSpeaker(speaker);
+    setCopied(false);
+    setIsSpeaking(false);
+
+    const session = getSpeakerSession(speaker.id);
+    const defaultIntro = `[Stage Cue: Stand center stage, smile warmly, look directly at audience]
+
+"A very warm welcome, delegates and guests! It is our distinct honor to welcome **${speaker.name}** to the stage.
+
+[Stage Cue: Acknowledge the speaker with an open hand gesture]
+
+Serving as **${speaker.designation}** at **${speaker.organization}**, today's session will explore:
+*${speaker.topic || session?.title || 'Keynote Presentation'}*.
+
+[Stage Cue: Lead the audience with applause]
+
+Please give an enthusiastic round of applause for **${speaker.name}**!"`;
+
+    setIntroScript(defaultIntro);
+  };
+
+  const handleRegenerateIntro = async () => {
+    if (!viewingSpeaker) return;
+    setGeneratingScript(true);
+    const session = getSpeakerSession(viewingSpeaker.id);
+
+    try {
+      const res = await api.generateScript({
+        scriptType: 'Speaker Introduction',
+        speakerId: viewingSpeaker.id,
+        currentActivityId: session?.id,
+        tone: 'Professional',
+        customNotes: viewingSpeaker.bio || ''
+      });
+      setIntroScript(res.script);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGeneratingScript(false);
+    }
+  };
+
+  const handleCopyIntro = () => {
+    navigator.clipboard.writeText(introScript);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleToggleVoice = () => {
+    if (!('speechSynthesis' in window)) {
+      alert('Speech synthesis is not supported in this browser.');
+      return;
+    }
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    const vocalLines = (introScript || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && !(line.startsWith('[') && line.endsWith(']')))
+      .join(' ')
+      .replace(/[*_#"]/g, '');
+
+    if (!vocalLines) return;
+    const utterance = new SpeechSynthesisUtterance(vocalLines);
+    utterance.rate = 1.0;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.designation.trim() || !formData.organization.trim())
+      return;
+
+    setLoading(true);
+    try {
+      if (editingSpeaker) {
+        await api.updateSpeaker(editingSpeaker.id, formData);
+        toast.success('Speaker profile updated successfully.');
+      } else {
+        await api.createSpeaker(formData);
+        toast.success('Speaker registered successfully.');
+      }
+      setIsModalOpen(false);
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save speaker profile.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteId) return;
+    try {
+      await api.deleteSpeaker(confirmDeleteId);
+      if (viewingSpeaker?.id === confirmDeleteId) setViewingSpeaker(null);
+      setConfirmDeleteId(null);
+      toast.success('Speaker profile deleted.');
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete speaker.');
+    }
+  };
+
+  const onStageCount = speakers.filter((s) => getSpeakerStatus(s.id) === 'ON STAGE').length;
+  const readyCount = speakers.filter((s) => {
+    const st = getSpeakerStatus(s.id);
+    return st === 'READY' || st === 'UPCOMING';
+  }).length;
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 animate-fade-in max-w-7xl mx-auto select-none">
+      
+      {/* ─────────────────────────────────────────────────────────────
+          1. HEADER & SPEAKER METRICS
+          ───────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+              <User className="w-4 h-4" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              Speaker & Dignitary Directory
+            </h2>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Maintain keynote dignitary profiles, linked stage sessions, biographical dossiers, and AI intro scripts
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono">
+            <span className="text-slate-600 font-bold">{speakers.length} Speakers</span>
+            <span className="text-slate-300">•</span>
+            <span className="text-emerald-700 font-bold">{readyCount} Ready</span>
+          </div>
+
+          <button
+            onClick={openCreateModal}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Speaker / Guest</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          2. TOOLBAR: SEARCH, STATUS FILTERS & SESSION FILTER
+          ───────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row items-center justify-between gap-3 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+        {/* Search */}
+        <div className="relative w-full lg:w-80">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search speaker, organization, topic..."
+            className="w-full pl-9 pr-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+
+        {/* Status Filters */}
+        <div className="flex items-center gap-1.5 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0">
+          {['ALL', 'ON STAGE', 'READY', 'UPCOMING', 'COMPLETED', 'DELAYED'].map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setStatusFilter(filter)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
+                statusFilter === filter
+                  ? 'bg-indigo-50 text-indigo-900 border border-indigo-300 font-bold'
+                  : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
+
+        {/* Session Selector Dropdown */}
+        <div className="w-full lg:w-64">
+          <select
+            value={sessionFilter}
+            onChange={(e) => setSessionFilter(e.target.value)}
+            className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          >
+            <option value="ALL">All Agenda Sessions</option>
+            {agenda.map((a) => (
+              <option key={a.id} value={a.id}>
+                #{a.order_index} {a.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          3. SPEAKER DIRECTORY GRID / EMPTY STATE
+          ───────────────────────────────────────────────────────────── */}
+      {filteredSpeakers.length === 0 ? (
+        <EmptyState
+          icon={User}
+          title="NO SPEAKERS YET"
+          description="Add your first speaker or dignitary to generate introductions, bios, and stage teleprompter cues."
+          actionLabel="Add Speaker"
+          onAction={openCreateModal}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredSpeakers.map((speaker) => {
+            const session = getSpeakerSession(speaker.id);
+            const speakerStatus = getSpeakerStatus(speaker.id);
+            const isOnStage = speakerStatus === 'ON STAGE';
+
+            return (
+              <div
+                key={speaker.id}
+                className={`p-5 rounded-2xl bg-white border transition flex flex-col justify-between shadow-sm relative group ${
+                  isOnStage
+                    ? 'border-2 border-red-400'
+                    : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
+                }`}
+              >
+                <div>
+                  {/* Top Profile Bar */}
+                  <div className="flex items-start justify-between gap-3 mb-3.5">
+                    <div className="relative">
+                      <img
+                        src={getSpeakerAvatar(speaker.name, speaker.avatar_url)}
+                        alt={speaker.name}
+                        className="w-16 h-16 rounded-2xl object-cover border border-slate-200 bg-slate-100 shadow-sm flex-shrink-0"
+                      />
+                      {isOnStage && (
+                        <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 border-2 border-white animate-pulse" />
+                      )}
+                    </div>
+
+                    {/* Status Pill & Quick Actions */}
+                    <div className="flex flex-col items-end gap-1.5">
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          isOnStage
+                            ? 'bg-red-50 text-red-700 border border-red-200 animate-pulse'
+                            : speakerStatus === 'COMPLETED'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : speakerStatus === 'DELAYED'
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                            : 'bg-blue-50 text-blue-700 border border-blue-200'
+                        }`}
+                      >
+                        {speakerStatus}
+                      </span>
+
+                      <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
+                        <button
+                          onClick={() => openViewDrawer(speaker)}
+                          className="p-1.5 rounded-lg bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50"
+                          title="View Full Profile & Intro Script"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => openEditModal(speaker)}
+                          className="p-1.5 rounded-lg bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50"
+                          title="Edit Speaker Details"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(speaker.id)}
+                          className="p-1.5 rounded-lg bg-white text-slate-400 hover:text-red-600 border border-slate-200 hover:bg-red-50"
+                          title="Delete Speaker"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                {/* Speaker Identity */}
+                <h3 className="text-base font-bold text-slate-900 leading-snug tracking-tight">
+                  {speaker.name}
+                </h3>
+                <p className="text-xs font-semibold text-indigo-700 mt-0.5">
+                  {speaker.designation}
+                </p>
+                <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-1 truncate">
+                  <Building className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+                  <span>{speaker.organization}</span>
+                </p>
+
+                {/* Linked Stage Session Tag */}
+                {session ? (
+                  <div className="mt-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
+                      <span className="font-bold uppercase text-indigo-700">
+                        Session #{session.order_index}
+                      </span>
+                      <span>
+                        {session.start_time} - {session.end_time}
+                      </span>
+                    </div>
+                    <p className="font-semibold text-slate-800 line-clamp-1">{session.title}</p>
+                  </div>
+                ) : (
+                  <div className="mt-3 p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-400 italic">
+                    Unassigned to agenda session
+                  </div>
+                )}
+
+                {/* Keynote Topic */}
+                {speaker.topic && (
+                  <p className="mt-2.5 text-xs text-slate-600 italic line-clamp-2">
+                    Topic: "{speaker.topic}"
+                  </p>
+                )}
+              </div>
+
+              {/* Action Toolbar */}
+              <div className="pt-3.5 mt-3.5 border-t border-slate-200 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => openViewDrawer(speaker)}
+                  className="flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold transition shadow-sm"
+                >
+                  <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>View Details</span>
+                </button>
+
+                <button
+                  onClick={() => setWorkflowSpeaker(speaker)}
+                  className="flex items-center justify-center gap-1.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-semibold transition shadow-sm"
+                  title="Generate Speaker Introduction with AI Context"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Generate Intro</span>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          4. SPEAKER PROFILE & SCRIPT DRAWER / MODAL
+          ───────────────────────────────────────────────────────────── */}
+      {viewingSpeaker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border border-slate-200 w-full max-w-3xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center gap-3">
+                <img
+                  src={getSpeakerAvatar(viewingSpeaker.name, viewingSpeaker.avatar_url)}
+                  alt={viewingSpeaker.name}
+                  className="w-10 h-10 rounded-xl object-cover border border-slate-200"
+                />
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 leading-tight">
+                    {viewingSpeaker.name}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {viewingSpeaker.designation} • {viewingSpeaker.organization}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const sp = viewingSpeaker;
+                    setViewingSpeaker(null);
+                    openEditModal(sp);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold transition"
+                >
+                  <Edit3 className="w-3.5 h-3.5 inline mr-1" />
+                  Edit
+                </button>
+
+                <button
+                  onClick={() => setViewingSpeaker(null)}
+                  className="p-1 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-5">
+              
+              {/* Linked Session Info */}
+              {(() => {
+                const session = getSpeakerSession(viewingSpeaker.id);
+                return session ? (
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 font-mono block">
+                        Assigned Session
+                      </span>
+                      <span className="font-bold text-slate-900 text-sm">{session.title}</span>
+                    </div>
+                    <div className="text-right font-mono text-slate-500">
+                      <span className="block font-bold text-slate-800">
+                        {session.start_time} - {session.end_time}
+                      </span>
+                      <span className="text-[10px]">{session.room || 'Main Stage'}</span>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Bio & Topic */}
+              <div className="space-y-3">
+                {viewingSpeaker.topic && (
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
+                      Keynote / Session Topic
+                    </span>
+                    <p className="text-sm font-semibold text-slate-900 mt-0.5">
+                      "{viewingSpeaker.topic}"
+                    </p>
+                  </div>
+                )}
+
+                {viewingSpeaker.bio && (
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
+                      Biographical Dossier
+                    </span>
+                    <p className="text-xs text-slate-700 leading-relaxed mt-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      {viewingSpeaker.bio}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Stage Introduction Teleprompter Script */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Stage Introduction Script</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handleRegenerateIntro}
+                      disabled={generatingScript}
+                      className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-indigo-700 border border-slate-200 text-xs font-bold transition shadow-sm"
+                      title="Regenerate with AI"
+                    >
+                      <Sparkles className={`w-3.5 h-3.5 ${generatingScript ? 'animate-spin' : ''}`} />
+                    </button>
+
+                    <button
+                      onClick={handleCopyIntro}
+                      className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition"
+                      title="Copy Script"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+
+                    <button
+                      onClick={handleToggleVoice}
+                      className={`p-1.5 rounded-lg border text-xs font-bold transition ${
+                        isSpeaking
+                          ? 'bg-rose-600 text-white border-rose-500 animate-pulse'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                      title="Voice Rehearsal"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      onClick={() => onOpenTeleprompter && onOpenTeleprompter(introScript)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition shadow-sm"
+                    >
+                      <Tv className="w-3.5 h-3.5" />
+                      <span>Use in Teleprompter</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs leading-relaxed max-h-56 overflow-y-auto pr-1">
+                  {parseStageScript(introScript).map((line, idx) => {
+                    if (line.type === 'cue') {
+                      return (
+                        <div
+                          key={idx}
+                          className="my-1.5 px-2.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-800 font-mono text-[11px] font-bold uppercase tracking-wider inline-block"
+                        >
+                          ⚡ {line.content}
+                        </div>
+                      );
+                    }
+                    if (line.type === 'empty') return <div key={idx} className="h-1" />;
+                    return (
+                      <p key={idx} className="text-slate-800">
+                        {line.content}
+                      </p>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          5. ADD / EDIT SPEAKER MODAL
+          ───────────────────────────────────────────────────────────── */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-base font-bold text-slate-900">
+                  {editingSpeaker ? 'Edit Speaker Profile' : 'Add New Dignitary / Speaker'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="stage-label">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g. Dr. Rajeshwari Menon"
+                  className="stage-input"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="stage-label">Designation / Role *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.designation}
+                    onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                    placeholder="e.g. VP of Research & AI"
+                    className="stage-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="stage-label">Organization *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.organization}
+                    onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                    placeholder="e.g. DeepMind"
+                    className="stage-input"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="stage-label">Keynote / Session Topic</label>
+                <input
+                  type="text"
+                  value={formData.topic}
+                  onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+                  placeholder="e.g. Autonomous Real-Time Multi-Agent Architectures"
+                  className="stage-input"
+                />
+              </div>
+
+              <div>
+                <label className="stage-label">Photo / Avatar URL (Optional)</label>
+                <input
+                  type="text"
+                  value={formData.avatar_url}
+                  onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
+                  placeholder="Leave blank for automatic stylized avatar"
+                  className="stage-input"
+                />
+              </div>
+
+              <div>
+                <label className="stage-label">Biographical Context (for Anchor Cues)</label>
+                <textarea
+                  rows={3}
+                  value={formData.bio}
+                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                  placeholder="Notable achievements, career highlights, book authorship, key talking points..."
+                  className="stage-input resize-none"
+                />
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition disabled:opacity-50 shadow-sm"
+                >
+                  {loading ? 'Saving...' : editingSpeaker ? 'Save Profile' : 'Create Speaker'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          5. SCRIPT WORKFLOW MODAL (AI CONTEXT INTEGRATION)
+          ───────────────────────────────────────────────────────────── */}
+      {workflowSpeaker && (
+        <ScriptWorkflowModal
+          isOpen={Boolean(workflowSpeaker)}
+          onClose={() => setWorkflowSpeaker(null)}
+          workflowType="speaker-intro"
+          event={event}
+          speaker={workflowSpeaker}
+          currentSession={getSpeakerSession(workflowSpeaker.id)}
+          onOpenTeleprompter={onOpenTeleprompter}
+        />
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          6. CONFIRM DELETE DIALOG
+          ───────────────────────────────────────────────────────────── */}
+      <ConfirmDialog
+        isOpen={Boolean(confirmDeleteId)}
+        title="Delete Speaker Profile"
+        message="Are you sure you want to remove this dignitary profile from the event directory? Any linked agenda session will have speaker unassigned."
+        confirmLabel="Delete Speaker"
+        isDestructive
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+    </div>
+  );
+}
