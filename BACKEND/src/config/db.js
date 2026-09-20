@@ -67,14 +67,46 @@ export const SEED_EVENT = {
   name: 'TECHFEST 2026',
   description: 'Premier Technology & Innovation Leadership Summit',
   organizer_name: 'TechFest Global Committee',
+  is_multi_day: 1,
+  total_days: 3,
   date: '2026-09-20',
+  end_date: '2026-09-22',
   start_time: '09:00 AM',
   end_time: '06:00 PM',
   venue: 'Grand Convention Center',
   room: 'Main Auditorium',
   status: 'LIVE',
   current_delay_minutes: 0,
-  created_at: new Date().toISOString()
+  created_at: new Date().toISOString(),
+  day_schedules: JSON.stringify([
+    {
+      day: 1,
+      date: '2026-09-20',
+      label: 'Day 1: Inauguration & AI Keynotes',
+      venue: 'Grand Convention Center',
+      room: 'Main Auditorium & Expo Hall A',
+      time: '09:00 AM - 06:00 PM',
+      highlight: 'Ceremonial Opening, DeepMind Keynote & AI Workshops'
+    },
+    {
+      day: 2,
+      date: '2026-09-21',
+      label: 'Day 2: Developer Sprints & Technical Tracks',
+      venue: 'Tech Innovation Hub Arena',
+      room: 'Lab 3 & Workshop Studio',
+      time: '09:30 AM - 07:00 PM',
+      highlight: 'Hands-on Agentic Robotics & Hackathon Tracks'
+    },
+    {
+      day: 3,
+      date: '2026-09-22',
+      label: 'Day 3: Final Pitches & Grand Valedictory',
+      venue: 'Grand Convention Center',
+      room: 'Main Stage Amphitheatre',
+      time: '10:00 AM - 05:30 PM',
+      highlight: 'Top 10 Jury Pitching, Cash Prize Awards & Closing Ceremony'
+    }
+  ])
 };
 
 export const SEED_SPEAKERS = [
@@ -312,7 +344,10 @@ export const initDB = async () => {
       organizer TEXT,
       organizer_type TEXT DEFAULT 'Organization',
       category TEXT DEFAULT 'Technology',
+      is_multi_day INTEGER DEFAULT 0,
+      total_days INTEGER DEFAULT 1,
       date TEXT,
+      end_date TEXT,
       start_time TEXT,
       end_time TEXT,
       venue TEXT,
@@ -326,7 +361,8 @@ export const initDB = async () => {
       registration_deadline TEXT,
       status TEXT DEFAULT 'LIVE',
       current_delay_minutes INTEGER DEFAULT 0,
-      created_at TEXT
+      created_at TEXT,
+      day_schedules TEXT
     );
 
     CREATE TABLE IF NOT EXISTS speakers (
@@ -444,6 +480,9 @@ export const initDB = async () => {
     await addIfMissing('organizer', 'TEXT');
     await addIfMissing('organizer_type', "TEXT DEFAULT 'Organization'");
     await addIfMissing('category', "TEXT DEFAULT 'Technology'");
+    await addIfMissing('is_multi_day', 'INTEGER DEFAULT 0');
+    await addIfMissing('total_days', 'INTEGER DEFAULT 1');
+    await addIfMissing('end_date', 'TEXT');
     await addIfMissing('city', "TEXT DEFAULT 'Ahmedabad'");
     await addIfMissing('location', 'TEXT');
     await addIfMissing('image', 'TEXT');
@@ -451,6 +490,7 @@ export const initDB = async () => {
     await addIfMissing('eligibility', 'TEXT');
     await addIfMissing('registration_status', "TEXT DEFAULT 'OPEN'");
     await addIfMissing('registration_deadline', 'TEXT');
+    await addIfMissing('day_schedules', 'TEXT');
   } catch (err) {
     console.warn('[DB] Column migration check notice:', err.message);
   }
