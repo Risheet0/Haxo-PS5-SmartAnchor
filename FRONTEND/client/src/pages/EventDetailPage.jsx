@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import {
   Calendar,
   Clock,
@@ -15,8 +16,8 @@ import { SASM_MOCK_EVENTS } from '../services/sasmEventsData';
 import EventRegistrationModal from '../components/EventRegistrationModal';
 
 export default function EventDetailPage({ eventId = 'sasm-ev-1', onNavigate, currentUser = null }) {
-  const [showRegModal, setShowRegModal] = React.useState(false);
-  const [isRegistered, setIsRegistered] = React.useState(() => {
+  const [showRegModal, setShowRegModal] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(() => {
     try {
       const saved = localStorage.getItem('sasm_registered_events');
       const list = saved ? JSON.parse(saved) : [];
