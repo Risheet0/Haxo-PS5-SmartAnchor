@@ -177,23 +177,23 @@ Please ensure you are seated as we commence this next session immediately!"`);
       aria-labelledby="workflow-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/40 backdrop-blur-sm animate-fade-in select-none"
     >
-      <div className="bg-white border border-slate-200 w-full max-w-4xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="soft-card w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* ─────────────────────────────────────────────────────────────
             MODAL HEADER
             ───────────────────────────────────────────────────────────── */}
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
-              <Sparkles className="w-4 h-4" />
+        <div className="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+              <Sparkles className="w-4.5 h-4.5" />
             </div>
             <div>
-              <h3 id="workflow-modal-title" className="text-base font-bold text-slate-900">
+              <h3 id="workflow-modal-title" className="text-base font-bold text-slate-900 tracking-tight">
                 {workflowType === 'speaker-intro'
                   ? 'Generate Stage Speaker Introduction'
                   : 'Generate Session Transition Script'}
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 font-medium">
                 AI synthesizes live event context, session timeline & dignitary credentials into stage teleprompter copy
               </p>
             </div>
@@ -201,7 +201,7 @@ Please ensure you are seated as we commence this next session immediately!"`);
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 bg-slate-100/80 hover:bg-slate-200/80 transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -300,28 +300,30 @@ Please ensure you are seated as we commence this next session immediately!"`);
           )}
 
           {/* B. TONE & PARAMETERS BAR */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-500 font-bold uppercase text-[10px]">Tone:</span>
-              {['Professional', 'Formal', 'Friendly', 'Energetic'].map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTone(t)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
-                    tone === t
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Tone:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {['Professional', 'Formal', 'Friendly', 'Energetic'].map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTone(t)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                      tone === t
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:bg-slate-50'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <button
               onClick={handleGenerate}
               disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-indigo-700 border border-indigo-200 text-xs font-semibold transition shadow-sm"
+              className="btn-pill-secondary flex items-center gap-1.5 text-xs py-1.5 px-3.5"
             >
               <RotateCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               <span>{loading ? 'Generating...' : 'Regenerate'}</span>
@@ -329,22 +331,22 @@ Please ensure you are seated as we commence this next session immediately!"`);
           </div>
 
           {/* C. GENERATED SCRIPT DISPLAY & ACTIONS */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
+          <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <span className="pill-badge-indigo text-[10px]">
                   STAGE SCRIPT
                 </span>
                 <span className="text-xs font-bold text-slate-800">({tone} Tone)</span>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsEditing(!isEditing)}
-                  className={`p-1.5 rounded-lg border text-xs transition ${
+                  className={`p-2 rounded-xl border text-xs transition ${
                     isEditing
-                      ? 'bg-indigo-600 text-white border-indigo-500'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                      : 'bg-white text-slate-700 border-slate-200/80 hover:bg-slate-50 shadow-sm'
                   }`}
                   title="Toggle Edit Mode"
                 >
@@ -353,7 +355,7 @@ Please ensure you are seated as we commence this next session immediately!"`);
 
                 <button
                   onClick={handleCopy}
-                  className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition"
+                  className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 transition shadow-sm"
                   title="Copy to Clipboard"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
@@ -364,7 +366,7 @@ Please ensure you are seated as we commence this next session immediately!"`);
                     setSaved(true);
                     setTimeout(() => setSaved(false), 2000);
                   }}
-                  className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition"
+                  className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 transition shadow-sm"
                   title="Save to session"
                 >
                   {saved ? <BookmarkCheck className="w-3.5 h-3.5 text-indigo-600" /> : <Bookmark className="w-3.5 h-3.5" />}
@@ -373,10 +375,10 @@ Please ensure you are seated as we commence this next session immediately!"`);
                 <button
                   onClick={handleToggleSpeech}
                   disabled={!generatedScript}
-                  className={`p-1.5 rounded-lg border transition ${
+                  className={`p-2 rounded-xl border transition shadow-sm ${
                     isSpeaking
                       ? 'bg-rose-600 text-white border-rose-500 animate-pulse'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      : 'bg-white text-slate-700 border-slate-200/80 hover:bg-slate-50'
                   }`}
                   title="Practice with audio voice"
                 >
@@ -388,7 +390,7 @@ Please ensure you are seated as we commence this next session immediately!"`);
                     if (onOpenTeleprompter) onOpenTeleprompter(generatedScript);
                     onClose();
                   }}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition shadow-sm"
+                  className="btn-pill-primary flex items-center gap-1.5 text-xs py-1.5 px-4"
                 >
                   <Tv className="w-3.5 h-3.5" />
                   <span>Use in Teleprompter</span>

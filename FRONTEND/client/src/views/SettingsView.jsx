@@ -2,21 +2,15 @@ import React, { useState } from 'react';
 import {
   Settings as SettingsIcon,
   Volume2,
-  Radio,
   RotateCcw,
   Check,
-  Sliders,
-  Shield,
-  Monitor,
-  Bell,
-  Cpu
+  Monitor
 } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function SettingsView({ event, onRefresh }) {
   const [speechRate, setSpeechRate] = useState(1.0);
   const [speechPitch, setSpeechPitch] = useState(1.0);
-  const [autoScrollSpeed, setAutoScrollSpeed] = useState(2);
   const [soundAlerts, setSoundAlerts] = useState(true);
   const [resetting, setResetting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -51,19 +45,19 @@ export default function SettingsView({ event, onRefresh }) {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 animate-fade-in max-w-5xl mx-auto select-none">
+    <div className="p-4 sm:p-8 space-y-6 animate-fade-in max-w-5xl mx-auto select-none">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 soft-card">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
-              <SettingsIcon className="w-4 h-4" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+              <SettingsIcon className="w-5 h-5" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
               Operations & AV Console Settings
             </h2>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Configure stage monitor parameters, speech synthesis rehearsal engine, and demo data state
           </p>
         </div>
@@ -71,16 +65,16 @@ export default function SettingsView({ event, onRefresh }) {
         <button
           onClick={handleResetDemo}
           disabled={resetting}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs sm:text-sm font-semibold transition active:scale-95 disabled:opacity-50"
+          className="btn-pill-secondary text-xs flex items-center gap-2"
           title="Restore original demo state"
         >
-          <RotateCcw className={`w-4 h-4 ${resetting ? 'animate-spin' : ''}`} />
+          <RotateCcw className={`w-3.5 h-3.5 ${resetting ? 'animate-spin' : ''}`} />
           <span>{resetting ? 'Resetting...' : 'Reset Demo State'}</span>
         </button>
       </div>
 
       {successMessage && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-center gap-2.5 animate-fade-in font-medium">
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-center gap-2.5 animate-fade-in font-semibold shadow-sm">
           <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
           <span>{successMessage}</span>
         </div>
@@ -88,16 +82,16 @@ export default function SettingsView({ event, onRefresh }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Voice Synthesizer & Teleprompter Settings */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
+        <div className="p-6 soft-card space-y-5">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
             <Volume2 className="w-4 h-4 text-indigo-600" />
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+            <h3 className="text-sm font-bold text-slate-800">
               Speech Synthesis Rehearsal
             </h3>
           </div>
 
           <div>
-            <div className="flex justify-between text-xs text-slate-700 font-medium mb-1.5">
+            <div className="flex justify-between text-xs text-slate-700 font-semibold mb-2">
               <span>Voice Pacing / Rate</span>
               <span className="font-mono text-indigo-700 font-bold">{speechRate.toFixed(2)}x</span>
             </div>
@@ -113,7 +107,7 @@ export default function SettingsView({ event, onRefresh }) {
           </div>
 
           <div>
-            <div className="flex justify-between text-xs text-slate-700 font-medium mb-1.5">
+            <div className="flex justify-between text-xs text-slate-700 font-semibold mb-2">
               <span>Voice Pitch</span>
               <span className="font-mono text-indigo-700 font-bold">{speechPitch.toFixed(2)}</span>
             </div>
@@ -131,7 +125,7 @@ export default function SettingsView({ event, onRefresh }) {
           <div className="pt-2">
             <button
               onClick={handleTestVoice}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold transition"
+              className="w-full btn-pill-secondary text-xs flex items-center justify-center gap-2"
             >
               <Volume2 className="w-4 h-4 text-indigo-600" />
               <span>Test Audio Playback</span>
@@ -140,38 +134,38 @@ export default function SettingsView({ event, onRefresh }) {
         </div>
 
         {/* Confidence Monitor & Hardware HUD */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
+        <div className="p-6 soft-card space-y-5">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
             <Monitor className="w-4 h-4 text-indigo-600" />
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+            <h3 className="text-sm font-bold text-slate-800">
               Display & Projection
             </h3>
           </div>
 
-          <div className="space-y-3 text-xs text-slate-700">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <div className="space-y-3.5 text-xs text-slate-700">
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
               <div>
                 <span className="font-bold block text-slate-900">Confidence Monitor HUD</span>
                 <span className="text-slate-500 text-[11px]">Large-format projector timer & current speaker</span>
               </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
                 Ready
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
               <div>
                 <span className="font-bold block text-slate-900">Audio Chime On Emergency</span>
                 <span className="text-slate-500 text-[11px]">Play subtle stage cue tone on broadcast alert</span>
               </div>
               <button
                 onClick={() => setSoundAlerts(!soundAlerts)}
-                className={`w-10 h-5 rounded-full transition-colors relative ${
-                  soundAlerts ? 'bg-indigo-600' : 'bg-slate-300'
+                className={`w-11 h-6 rounded-full transition-colors relative ${
+                  soundAlerts ? 'bg-slate-900' : 'bg-slate-200'
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
                     soundAlerts ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
