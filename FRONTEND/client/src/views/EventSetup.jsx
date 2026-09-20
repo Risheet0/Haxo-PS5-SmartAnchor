@@ -9,7 +9,12 @@ import {
   Rocket,
   FileText,
   ShieldCheck,
-  Layers
+  Layers,
+  MapPin,
+  Clock,
+  Sparkles,
+  Building2,
+  Map
 } from 'lucide-react';
 import { api } from '../services/api';
 import { getSpeakerAvatar } from '../utils/formatters';
@@ -24,6 +29,40 @@ const STEPS = [
   { id: 6, label: 'Review & Launch', desc: 'Go live' }
 ];
 
+// Safe parser for multi-day schedule arrays or JSON strings from SQLite / APIs
+const parseDaySchedules = (raw, fallbackDate = '2026-09-20', fallbackVenue = 'Grand Convention Center', fallbackRoom = 'Main Auditorium') => {
+  let list = raw;
+  if (typeof list === 'string') {
+    try {
+      list = JSON.parse(list);
+    } catch {
+      list = null;
+    }
+  }
+  if (Array.isArray(list) && list.length > 0) {
+    return list.map((item, idx) => ({
+      day: item.day || idx + 1,
+      date: item.date || fallbackDate,
+      label: item.label || `Day ${idx + 1}: Sessions & Tracks`,
+      venue: item.venue || fallbackVenue,
+      room: item.room || fallbackRoom,
+      time: item.time || '09:00 AM - 06:00 PM',
+      highlight: item.highlight || ''
+    }));
+  }
+  return [
+    {
+      day: 1,
+      date: fallbackDate,
+      label: 'Day 1: Inauguration & Keynotes',
+      venue: fallbackVenue,
+      room: fallbackRoom,
+      time: '09:00 AM - 06:00 PM',
+      highlight: 'Keynote Speeches & Core Program'
+    }
+  ];
+};
+
 export default function EventSetup({
   event,
   agenda = [],
@@ -36,16 +75,48 @@ export default function EventSetup({
   const [launching, setLaunching] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
-  const [eventData, setEventData] = useState({
+  const [eventData, setEventData] = useState(() => ({
     name: 'TechFest 2026',
     description: 'Premier Technology & Innovation Leadership Summit',
     organizer_name: 'TechFest Core Committee',
+    is_multi_day: true,
+    total_days: 3,
     date: '2026-09-20',
+    end_date: '2026-09-22',
     start_time: '09:00 AM',
     end_time: '06:00 PM',
     venue: 'Grand Convention Center',
-    room: 'Main Auditorium'
-  });
+    room: 'Main Auditorium',
+    day_schedules: [
+      {
+        day: 1,
+        date: '2026-09-20',
+        label: 'Day 1: Inauguration & AI Keynotes',
+        venue: 'Grand Convention Center',
+        room: 'Main Auditorium & Expo Hall A',
+        time: '09:00 AM - 06:00 PM',
+        highlight: 'Ceremonial Opening, DeepMind Keynote & AI Workshops'
+      },
+      {
+        day: 2,
+        date: '2026-09-21',
+        label: 'Day 2: Developer Sprints & Technical Tracks',
+        venue: 'Tech Innovation Hub Arena',
+        room: 'Lab 3 & Workshop Studio',
+        time: '09:30 AM - 07:00 PM',
+        highlight: 'Hands-on Agentic Robotics & Hackathon Tracks'
+      },
+      {
+        day: 3,
+        date: '2026-09-22',
+        label: 'Day 3: Final Pitches & Grand Valedictory',
+        venue: 'Grand Convention Center',
+        room: 'Main Stage Amphitheatre',
+        time: '10:00 AM - 05:30 PM',
+        highlight: 'Top 10 Jury Pitching, Cash Prize Awards & Closing Ceremony'
+      }
+    ]
+  }));
 
   const [newSession, setNewSession] = useState({
     title: '',
@@ -69,18 +140,71 @@ export default function EventSetup({
 
   useEffect(() => {
     if (event) {
+      const parsedSchedules = parseDaySchedules(
+        event.day_schedules || event.daySchedules,
+        event.date || '2026-09-20',
+        event.venue || 'Grand Convention Center',
+        event.room || 'Main Auditorium'
+      );
       setEventData({
         name: event.name || 'TechFest 2026',
         description: event.description || '',
         organizer_name: event.organizer_name || '',
+        is_multi_day: Boolean(event.is_multi_day || event.isMultiDay || (parsedSchedules && parsedSchedules.length > 1)),
+        total_days: event.total_days || event.totalDays || parsedSchedules.length || 1,
         date: event.date || '2026-09-20',
+        end_date: event.end_date || event.endDate || event.date || '2026-09-22',
         start_time: event.start_time || '09:00 AM',
         end_time: event.end_time || '06:00 PM',
         venue: event.venue || 'Grand Convention Center',
-        room: event.room || 'Main Auditorium'
+        room: event.room || 'Main Auditorium',
+        day_schedules: parsedSchedules
       });
     }
   }, [event]);
+
+  const handleAddDay = () => {
+    const list = Array.isArray(eventData?.day_schedules) ? eventData.day_schedules : [];
+    const nextDayNum = list.length + 1;
+    const newDay = {
+      day: nextDayNum,
+      date: eventData?.end_date || eventData?.date || '2026-09-23',
+      label: `Day ${nextDayNum}: Track & Sessions`,
+      venue: eventData?.venue || 'Grand Convention Center',
+      room: 'Secondary Stage / Lab',
+      time: '09:30 AM - 06:00 PM',
+      highlight: 'Workshops, competitions and technical sessions'
+    };
+    const updatedSchedules = [...list, newDay];
+    setEventData(prev => ({
+      ...prev,
+      is_multi_day: true,
+      total_days: updatedSchedules.length,
+      day_schedules: updatedSchedules
+    }));
+  };
+
+  const handleUpdateDay = (index, field, value) => {
+    const list = Array.isArray(eventData?.day_schedules) ? [...eventData.day_schedules] : [];
+    if (list[index]) {
+      list[index] = { ...list[index], [field]: value };
+      setEventData(prev => ({ ...prev, day_schedules: list }));
+    }
+  };
+
+  const handleDeleteDay = (index) => {
+    const list = Array.isArray(eventData?.day_schedules) ? eventData.day_schedules : [];
+    const updated = list.filter((_, i) => i !== index).map((d, i) => ({
+      ...d,
+      day: i + 1
+    }));
+    setEventData(prev => ({
+      ...prev,
+      total_days: updated.length,
+      is_multi_day: updated.length > 1,
+      day_schedules: updated
+    }));
+  };
 
   const handleSaveEventDetails = async () => {
     setSaving(true);
@@ -335,76 +459,299 @@ export default function EventSetup({
           </div>
         )}
 
-        {/* STEP 2: DATE & VENUE */}
+        {/* STEP 2: DATE & VENUE CONFIGURATION */}
         {currentStep === 2 && (
           <div className="space-y-6 animate-fade-in">
-            <div className="border-b border-slate-100 pb-4">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-indigo-600" />
-                Step 2: Date & Venue Configuration
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Specify scheduled event dates, doors open timings, and stage hall location
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="border-b border-slate-100 pb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <label className="soft-label">Event Date *</label>
-                <input
-                  type="date"
-                  value={eventData.date}
-                  onChange={(e) => setEventData({ ...eventData, date: e.target.value })}
-                  className="soft-input font-mono"
-                />
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-indigo-600" />
+                  Step 2: Date &amp; Venue Configuration
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Configure event Start Date, End Date, daily timings, and venue / stage allocations
+                </p>
               </div>
 
-              <div>
-                <label className="soft-label">Start Time *</label>
-                <input
-                  type="text"
-                  value={eventData.start_time}
-                  onChange={(e) => setEventData({ ...eventData, start_time: e.target.value })}
-                  placeholder="09:00 AM"
-                  className="soft-input font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="soft-label">End Time *</label>
-                <input
-                  type="text"
-                  value={eventData.end_time}
-                  onChange={(e) => setEventData({ ...eventData, end_time: e.target.value })}
-                  placeholder="06:00 PM"
-                  className="soft-input font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="soft-label">Venue / Facility *</label>
-                <input
-                  type="text"
-                  value={eventData.venue}
-                  onChange={(e) => setEventData({ ...eventData, venue: e.target.value })}
-                  placeholder="e.g. Grand Convention Center"
-                  className="soft-input"
-                />
-              </div>
-
-              <div>
-                <label className="soft-label">Stage / Room Hall *</label>
-                <input
-                  type="text"
-                  value={eventData.room}
-                  onChange={(e) => setEventData({ ...eventData, room: e.target.value })}
-                  placeholder="e.g. Main Auditorium Hall A"
-                  className="soft-input"
-                />
+              {/* Multi-Day vs Single Day Toggle */}
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl font-mono text-xs border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEventData({
+                      ...eventData,
+                      is_multi_day: false,
+                      total_days: 1,
+                      end_date: eventData.date
+                    });
+                  }}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                    !eventData.is_multi_day
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Single Day
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEventData({
+                      ...eventData,
+                      is_multi_day: true,
+                      total_days: Math.max(2, eventData.total_days || 2)
+                    });
+                  }}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1 ${
+                    eventData.is_multi_day
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Multi-Day Event</span>
+                </button>
               </div>
             </div>
+
+            {/* Date Range & Timings */}
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Event Dates &amp; Timings</span>
+                </h4>
+                {eventData.date && eventData.end_date && (
+                  <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    {eventData.is_multi_day
+                      ? `Duration: ${eventData.total_days || 2} Days (${eventData.date} → ${eventData.end_date})`
+                      : `Single Day (${eventData.date})`}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="soft-label flex items-center justify-between">
+                    <span>Start Date *</span>
+                    <span className="text-[10px] text-indigo-600 font-mono">Day 1</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={eventData.date}
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      const isMulti = eventData.is_multi_day;
+                      setEventData({
+                        ...eventData,
+                        date: newStart,
+                        end_date: (!isMulti || !eventData.end_date || eventData.end_date < newStart) ? newStart : eventData.end_date
+                      });
+                    }}
+                    className="soft-input font-mono text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="soft-label flex items-center justify-between">
+                    <span>End Date *</span>
+                    <span className="text-[10px] text-indigo-600 font-mono">{eventData.is_multi_day ? `Day ${eventData.total_days || 2}` : 'Same Day'}</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={eventData.end_date || eventData.date}
+                    onChange={(e) => {
+                      const newEnd = e.target.value;
+                      const isMulti = newEnd && eventData.date && newEnd !== eventData.date;
+                      setEventData({
+                        ...eventData,
+                        end_date: newEnd,
+                        is_multi_day: isMulti ? true : eventData.is_multi_day
+                      });
+                    }}
+                    className="soft-input font-mono text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="soft-label">Daily Start Time *</label>
+                  <input
+                    type="text"
+                    value={eventData.start_time}
+                    onChange={(e) => setEventData({ ...eventData, start_time: e.target.value })}
+                    placeholder="09:00 AM"
+                    className="soft-input font-mono text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="soft-label">Daily End Time *</label>
+                  <input
+                    type="text"
+                    value={eventData.end_time}
+                    onChange={(e) => setEventData({ ...eventData, end_time: e.target.value })}
+                    placeholder="06:00 PM"
+                    className="soft-input font-mono text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Primary Venue Overview */}
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Primary Venue &amp; Main Stage Location</span>
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="soft-label">Primary Venue / Campus *</label>
+                  <input
+                    type="text"
+                    value={eventData.venue}
+                    onChange={(e) => setEventData({ ...eventData, venue: e.target.value })}
+                    placeholder="e.g. Grand Convention Center"
+                    className="soft-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="soft-label">Main Stage / Room Hall *</label>
+                  <input
+                    type="text"
+                    value={eventData.room}
+                    onChange={(e) => setEventData({ ...eventData, room: e.target.value })}
+                    placeholder="e.g. Main Auditorium Hall A"
+                    className="soft-input"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* MULTI-DAY SCHEDULE & VENUE BREAKDOWN BUILDER */}
+            {eventData.is_multi_day && (() => {
+              const dayList = Array.isArray(eventData?.day_schedules) ? eventData.day_schedules : [];
+              return (
+                <div className="p-5 rounded-2xl bg-indigo-50/40 border border-indigo-150 space-y-4 font-sans">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-950">
+                        Day-by-Day Venue &amp; Stage Allocation ({dayList.length} Days)
+                      </h4>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAddDay}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-mono text-xs font-bold transition flex items-center gap-1 shadow-xs cursor-pointer"
+                    >
+                      <span>+ Add Day</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {dayList.map((dayItem, index) => (
+                      <div
+                        key={index}
+                        className="p-4 rounded-xl bg-white border border-slate-200 space-y-3 shadow-xs"
+                      >
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-900 text-white font-mono text-xs font-bold">
+                              Day 0{dayItem.day || index + 1}
+                            </span>
+                            <span className="text-xs font-bold text-slate-800">
+                              Schedule &amp; Stage Allocation
+                            </span>
+                          </div>
+
+                          {dayList.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDay(index)}
+                              className="text-slate-400 hover:text-red-600 transition p-1 text-xs cursor-pointer flex items-center gap-1"
+                              title="Remove Day"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Remove</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
+                          <div className="sm:col-span-3">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Date</label>
+                            <input
+                              type="date"
+                              value={dayItem.date || ''}
+                              onChange={(e) => handleUpdateDay(index, 'date', e.target.value)}
+                              className="soft-input font-mono text-xs py-1.5"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-4">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Day Theme / Title</label>
+                            <input
+                              type="text"
+                              value={dayItem.label || ''}
+                              onChange={(e) => handleUpdateDay(index, 'label', e.target.value)}
+                              placeholder="e.g. Day 1: Keynote Tracks"
+                              className="soft-input text-xs py-1.5"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-5">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Venue / Facility</label>
+                            <input
+                              type="text"
+                              value={dayItem.venue || ''}
+                              onChange={(e) => handleUpdateDay(index, 'venue', e.target.value)}
+                              placeholder="e.g. Grand Convention Center"
+                              className="soft-input text-xs py-1.5"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-4">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Stage / Room Hall</label>
+                            <input
+                              type="text"
+                              value={dayItem.room || ''}
+                              onChange={(e) => handleUpdateDay(index, 'room', e.target.value)}
+                              placeholder="e.g. Main Auditorium / Lab 3"
+                              className="soft-input text-xs py-1.5"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-3">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Day Timings</label>
+                            <input
+                              type="text"
+                              value={dayItem.time || ''}
+                              onChange={(e) => handleUpdateDay(index, 'time', e.target.value)}
+                              placeholder="09:00 AM - 06:00 PM"
+                              className="soft-input font-mono text-xs py-1.5"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-5">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Key Focus / Highlight</label>
+                            <input
+                              type="text"
+                              value={dayItem.highlight || ''}
+                              onChange={(e) => handleUpdateDay(index, 'highlight', e.target.value)}
+                              placeholder="e.g. Keynote speeches & AI workshops"
+                              className="soft-input text-xs py-1.5"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -646,14 +993,21 @@ export default function EventSetup({
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-                <span className="text-[11px] font-semibold text-slate-400 uppercase">Event & Venue</span>
+                <span className="text-[11px] font-semibold text-slate-400 uppercase">Event &amp; Venues</span>
                 <p className="text-base font-bold text-slate-900 truncate">{eventData.name}</p>
-                <p className="text-xs text-indigo-700 truncate">{eventData.venue} • {eventData.room}</p>
+                <p className="text-xs text-indigo-700 truncate">
+                  {eventData.venue} • {eventData.room}
+                  {eventData.is_multi_day && eventData.day_schedules?.length > 1 ? ` (+${eventData.day_schedules.length - 1} more stages)` : ''}
+                </p>
               </div>
 
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-                <span className="text-[11px] font-semibold text-slate-400 uppercase">Date & Timeline</span>
-                <p className="text-base font-bold text-slate-900 font-mono">{eventData.date}</p>
+                <span className="text-[11px] font-semibold text-slate-400 uppercase">
+                  {eventData.is_multi_day ? `Duration (${eventData.day_schedules?.length || 2} Days)` : 'Date & Timeline'}
+                </span>
+                <p className="text-base font-bold text-slate-900 font-mono truncate">
+                  {eventData.is_multi_day ? `${eventData.date} → ${eventData.end_date}` : eventData.date}
+                </p>
                 <p className="text-xs text-slate-600 font-mono">{eventData.start_time} - {eventData.end_time}</p>
               </div>
 
@@ -662,7 +1016,9 @@ export default function EventSetup({
                 <p className="text-base font-bold text-emerald-700 font-mono">
                   {agenda.length} Sessions • {speakers.length} Speakers
                 </p>
-                <p className="text-xs text-slate-500">All systems calibrated</p>
+                <p className="text-xs text-slate-500">
+                  {eventData.is_multi_day ? `${eventData.day_schedules?.length || 2} Live Stage Days Synced` : 'All systems calibrated'}
+                </p>
               </div>
             </div>
 

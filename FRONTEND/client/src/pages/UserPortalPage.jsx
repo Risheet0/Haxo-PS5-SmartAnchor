@@ -716,11 +716,15 @@ function UserDashboardEventCard({
             <div className="flex items-center gap-1.5 truncate">
               <MapPin className="w-3 h-3 text-slate-400" />
               <span className="font-bold text-slate-900">{event.city}</span>
-              <span className="truncate">• {event.location}</span>
+              <span className="truncate">• {event.venue || event.location}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Calendar className="w-3 h-3 text-slate-400" />
-              <span>{event.date} • {event.startTime}</span>
+              <span className={event.isMultiDay || event.endDate ? 'font-bold text-indigo-950' : ''}>
+                {event.isMultiDay || (event.endDate && event.endDate !== event.date)
+                  ? `Start: ${event.date} • End: ${event.endDate || event.date} (${event.totalDays || 2}D)`
+                  : `${event.date} • ${event.startTime || '09:00 AM'}`}
+              </span>
             </div>
           </div>
         </div>
