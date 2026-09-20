@@ -249,10 +249,30 @@ export const setMockStore = (key, val) => {
   }
 };
 
+export const DEFAULT_REGISTRATION_FIELDS = [
+  { id: 'full_name', label: 'Full Name', type: 'text', required: true, placeholder: 'e.g. Rahul Verma' },
+  { id: 'email', label: 'Email Address', type: 'email', required: true, placeholder: 'e.g. rahul@example.com' },
+  { id: 'mobile_number', label: 'Mobile Number', type: 'tel', required: true, placeholder: 'e.g. +91 98765 43210' },
+  { id: 'college', label: 'College / University', type: 'text', required: true, placeholder: 'e.g. IIT Bombay / L.D. College' },
+  { id: 'department', label: 'Department / Field of Study', type: 'text', required: true, placeholder: 'e.g. Computer Science / AI / IT' },
+  { id: 'year_semester', label: 'Year / Semester', type: 'select', required: false, options: ['1st Year', '2nd Year', '3rd Year', '4th Year / Final', 'Postgraduate / PhD', 'Working Professional'] },
+  { id: 'roll_number', label: 'College ID / Roll Number', type: 'text', required: false, placeholder: 'e.g. 21CS045' },
+  { id: 'dietary_notes', label: 'Dietary or Special Requirements', type: 'textarea', required: false, placeholder: 'Any accessibility or dietary preferences...' }
+];
+
+export const INITIAL_REGISTRATION_FORM = {
+  event_id: 1,
+  form_mode: 'custom_form',
+  google_form_url: '',
+  fields: DEFAULT_REGISTRATION_FIELDS
+};
+
 export const resetMockStore = () => {
   setMockStore('event', INITIAL_EVENT);
   setMockStore('speakers', INITIAL_SPEAKERS);
   setMockStore('agenda', INITIAL_AGENDA);
   setMockStore('announcements', INITIAL_ANNOUNCEMENTS);
   setMockStore('logs', INITIAL_LOGS);
+  setMockStore('registration_form', INITIAL_REGISTRATION_FORM);
+  setMockStore('registrations', []);
 };
