@@ -13,13 +13,15 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { getSpeakerAvatar } from '../utils/formatters';
+import RegistrationFormBuilder from '../components/RegistrationFormBuilder';
 
 const STEPS = [
   { id: 1, label: 'Event Info', desc: 'Title & details' },
   { id: 2, label: 'Date & Venue', desc: 'Schedule & hall' },
   { id: 3, label: 'Agenda', desc: 'Stage rundown' },
   { id: 4, label: 'Speakers', desc: 'Dignitary roster' },
-  { id: 5, label: 'Review & Launch', desc: 'Go live' }
+  { id: 5, label: 'Registration', desc: 'Custom / Google Form' },
+  { id: 6, label: 'Review & Launch', desc: 'Go live' }
 ];
 
 export default function EventSetup({
@@ -227,7 +229,7 @@ export default function EventSetup({
         </div>
 
         {/* Horizontal Progress Stepper */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-3 border-t border-slate-100">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-3 border-t border-slate-100">
           {STEPS.map((s) => {
             const isCompleted = currentStep > s.id;
             const isCurrent = currentStep === s.id;
@@ -614,16 +616,23 @@ export default function EventSetup({
           </div>
         )}
 
-        {/* STEP 5: REVIEW & LAUNCH */}
+        {/* STEP 5: REGISTRATION FORM BUILDER */}
         {currentStep === 5 && (
+          <div className="space-y-6 animate-fade-in">
+            <RegistrationFormBuilder eventId={event?.id || 1} />
+          </div>
+        )}
+
+        {/* STEP 6: REVIEW & LAUNCH */}
+        {currentStep === 6 && (
           <div className="space-y-6 animate-fade-in">
             <div className="border-b border-slate-100 pb-4">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Step 5: Event Operational Review
+                Step 6: Event Operational Review
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Verify event settings, agenda rundown, and connected systems before launching live
+                Verify event settings, agenda rundown, registration form, and connected systems before launching live
               </p>
             </div>
 
@@ -689,7 +698,7 @@ export default function EventSetup({
         )}
 
         {/* STEPPER NAVIGATION FOOTER */}
-        {currentStep < 5 && (
+        {currentStep < 6 && (
           <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
             <button
               type="button"

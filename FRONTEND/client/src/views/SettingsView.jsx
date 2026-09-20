@@ -8,11 +8,14 @@ import {
   Sparkles,
   Key,
   Eye,
-  EyeOff
+  EyeOff,
+  ClipboardList
 } from 'lucide-react';
 import { api } from '../services/api';
+import RegistrationFormBuilder from '../components/RegistrationFormBuilder';
 
 export default function SettingsView({ event, onRefresh }) {
+  const [activeTab, setActiveTab] = useState('registration'); // default to registration tab or system
   const [speechRate, setSpeechRate] = useState(1.0);
   const [speechPitch, setSpeechPitch] = useState(1.0);
   const [soundAlerts, setSoundAlerts] = useState(true);
@@ -89,7 +92,43 @@ export default function SettingsView({ event, onRefresh }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl w-fit border border-slate-200/70">
+        <button
+          type="button"
+          onClick={() => setActiveTab('registration')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+            activeTab === 'registration'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <ClipboardList className="w-4 h-4 text-indigo-600" />
+          <span>Registration Form & Intake</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('system')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+            activeTab === 'system'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <SettingsIcon className="w-4 h-4 text-indigo-600" />
+          <span>AV & Rehearsal Systems</span>
+        </button>
+      </div>
+
+      {activeTab === 'registration' && (
+        <div className="animate-fade-in">
+          <RegistrationFormBuilder eventId={event?.id || 1} />
+        </div>
+      )}
+
+      {activeTab === 'system' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
         {/* Voice Synthesizer & Teleprompter Settings */}
         <div className="p-6 soft-card space-y-5">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
@@ -245,6 +284,7 @@ export default function SettingsView({ event, onRefresh }) {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

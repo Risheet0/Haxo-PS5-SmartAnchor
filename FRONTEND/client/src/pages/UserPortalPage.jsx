@@ -16,7 +16,8 @@ import {
   SlidersHorizontal,
   Clock,
   Shield,
-  Layers
+  Layers,
+  Ticket
 } from 'lucide-react';
 import {
   SASM_MOCK_EVENTS,
@@ -25,6 +26,7 @@ import {
   sortEventsByLocation
 } from '../services/sasmEventsData';
 import EventCard from '../components/EventCard';
+import EventRegistrationModal from '../components/EventRegistrationModal';
 
 export default function UserPortalPage({
   selectedCity = 'Ahmedabad',
@@ -56,15 +58,35 @@ export default function UserPortalPage({
     }
   });
 
+  const [registrationModalEvent, setRegistrationModalEvent] = useState(null);
+
   const userName = currentUser?.name || 'Alex Johnson';
   const userEmail = currentUser?.email || 'alex.johnson@student.edu';
 
-  // Toggle registration handler
+  // Open registration modal
+  const handleOpenRegistration = (event) => {
+    setRegistrationModalEvent(event);
+  };
+
+  // Toggle/cancel registration handler
   const handleToggleRegistration = (eventId) => {
+    const targetEvent = SASM_MOCK_EVENTS.find((e) => e.id === eventId);
+    if (!registeredEventIds.includes(eventId)) {
+      setRegistrationModalEvent(targetEvent);
+    } else {
+      setRegisteredEventIds((prev) => {
+        const updated = prev.filter((id) => id !== eventId);
+        localStorage.setItem('sasm_registered_events', JSON.stringify(updated));
+        return updated;
+      });
+    }
+  };
+
+  // Registration modal success callback
+  const handleRegistrationSuccess = (eventId, passData) => {
     setRegisteredEventIds((prev) => {
-      const updated = prev.includes(eventId)
-        ? prev.filter((id) => id !== eventId)
-        : [...prev, eventId];
+      if (prev.includes(eventId)) return prev;
+      const updated = [...prev, eventId];
       localStorage.setItem('sasm_registered_events', JSON.stringify(updated));
       return updated;
     });
@@ -452,20 +474,29 @@ export default function UserPortalPage({
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between font-mono text-xs">
+                  <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
                     <button
                       onClick={() => handleToggleRegistration(event.id)}
-                      className="text-slate-500 hover:text-rose-600 text-[11px] font-bold"
+                      className="text-slate-400 hover:text-rose-600 text-[11px] font-bold"
                     >
                       Cancel Registration
                     </button>
-                    <button
-                      onClick={() => onNavigate(`/events/${event.id}`)}
-                      className="px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold transition flex items-center gap-1"
-                    >
-                      <span>View Details</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenRegistration(event)}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 flex items-center gap-1 transition"
+                      >
+                        <Ticket className="w-3.5 h-3.5" />
+                        <span>View Pass</span>
+                      </button>
+                      <button
+                        onClick={() => onNavigate(`/events/${event.id}`)}
+                        className="px-4 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold transition flex items-center gap-1"
+                      >
+                        <span>Details</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -478,12 +509,12 @@ export default function UserPortalPage({
               <div className="space-y-1">
                 <h3 className="text-base font-bold text-slate-900">You haven't joined any events yet.</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Explore events in your city or region and click "Register" to track your schedule here.
+                  Browse regional hackathons, AI workshops, and university symposiums in the Explore tab.
                 </p>
               </div>
               <button
                 onClick={() => setActiveTab('explore')}
-                className="px-6 py-3 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold text-xs transition shadow-xs"
+                className="px-6 py-2.5 rounded-xl bg-slate-950 text-white font-bold text-xs hover:bg-slate-800 transition"
               >
                 Explore Events
               </button>
@@ -492,13 +523,18 @@ export default function UserPortalPage({
         </div>
       )}
 
-      {/* ── TAB 4: SAVED EVENTS ── */}
+      {/* ── TAB 4: SAVED / BOOKMARKED EVENTS ── */}
       {activeTab === 'saved' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-            <h2 className="text-xl font-bold text-slate-950 uppercase tracking-tight">
-              Saved / Bookmarked Events ({savedEvents.length})
-            </h2>
+            <div>
+              <h2 className="text-xl font-bold text-slate-950 uppercase tracking-tight">
+                Saved &amp; Bookmarked Events ({savedEvents.length})
+              </h2>
+              <p className="text-xs text-slate-500 font-mono">
+                Events you have shortlisted for later review.
+              </p>
+            </div>
           </div>
 
           {savedEvents.length > 0 ? (

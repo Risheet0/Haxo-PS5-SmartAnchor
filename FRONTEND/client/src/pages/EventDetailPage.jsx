@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Calendar,
   Clock,
@@ -9,11 +8,24 @@ import {
   Mail,
   Phone,
   Tag,
-  Share2
+  Share2,
+  Ticket
 } from 'lucide-react';
 import { SASM_MOCK_EVENTS } from '../services/sasmEventsData';
+import EventRegistrationModal from '../components/EventRegistrationModal';
 
-export default function EventDetailPage({ eventId = 'sasm-ev-1', onNavigate }) {
+export default function EventDetailPage({ eventId = 'sasm-ev-1', onNavigate, currentUser = null }) {
+  const [showRegModal, setShowRegModal] = React.useState(false);
+  const [isRegistered, setIsRegistered] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem('sasm_registered_events');
+      const list = saved ? JSON.parse(saved) : [];
+      return list.includes(eventId);
+    } catch {
+      return false;
+    }
+  });
+
   const event = SASM_MOCK_EVENTS.find(e => e.id === eventId) || SASM_MOCK_EVENTS[0];
 
   return (
@@ -125,10 +137,16 @@ export default function EventDetailPage({ eventId = 'sasm-ev-1', onNavigate }) {
             </div>
 
             <button
-              onClick={() => onNavigate('/signup')}
-              className="w-full py-3 rounded-xl bg-white text-slate-950 font-bold text-xs hover:bg-slate-100 transition shadow-sm"
+              type="button"
+              onClick={() => setShowRegModal(true)}
+              className={`w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition shadow-sm ${
+                isRegistered
+                  ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                  : 'bg-white text-slate-950 hover:bg-slate-100'
+              }`}
             >
-              Register / Sign In to Join
+              <Ticket className="w-4 h-4" />
+              <span>{isRegistered ? 'View My Event Pass' : 'Register / Sign In to Join'}</span>
             </button>
           </div>
 
@@ -149,6 +167,24 @@ export default function EventDetailPage({ eventId = 'sasm-ev-1', onNavigate }) {
           </div>
         </div>
       </div>
+
+      {/* Registration Modal */}
+      <EventRegistrationModal
+        event={event}
+        isOpen={showRegModal}
+        currentUser={currentUser}
+        onClose={() => setShowRegModal(false)}
+        onRegistrationSuccess={(evId) => {
+          setIsRegistered(true);
+          try {
+            const saved = localStorage.getItem('sasm_registered_events');
+            const list = saved ? JSON.parse(saved) : [];
+            if (!list.includes(evId)) {
+              localStorage.setItem('sasm_registered_events', JSON.stringify([...list, evId]));
+            }
+          } catch {}
+        }}
+      />
     </div>
   );
 }

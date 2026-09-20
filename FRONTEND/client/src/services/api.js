@@ -4,6 +4,8 @@ import {
   INITIAL_AGENDA,
   INITIAL_ANNOUNCEMENTS,
   INITIAL_LOGS,
+  INITIAL_REGISTRATION_FORM,
+  DEFAULT_REGISTRATION_FIELDS,
   getMockStore,
   setMockStore,
   resetMockStore
@@ -871,6 +873,85 @@ generateEmergencyAnnouncement: async (payload) => {
   getLogs: async () => {
     return fetchWithFallback(`${API_BASE}/logs`, {}, () => {
       return getMockStore('logs', INITIAL_LOGS);
+    });
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 7. EVENT REGISTRATION & ATTENDEE INTAKE FORMS
+  // ─────────────────────────────────────────────────────────────────────────
+  getRegistrationForm: async (eventId = 1) => {
+    return fetchWithFallback(`${API_BASE}/events/${eventId}/registration-form`, {}, () => {
+      return getMockStore('registration_form', INITIAL_REGISTRATION_FORM);
+    });
+  },
+
+  saveRegistrationForm: async (eventId = 1, formData) => {
+    requireManagerRole(); // Security check for hosts
+    return fetchWithFallback(
+      `${API_BASE}/events/${eventId}/registration-form`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      },
+      () => {
+        const updated = {
+          event_id: Number(eventId),
+          form_mode: formData.form_mode || 'custom_form',
+          google_form_url: formData.google_form_url || '',
+          fields: formData.fields || DEFAULT_REGISTRATION_FIELDS,
+          updated_at: new Date().toISOString()
+        };
+        setMockStore('registration_form', updated);
+        return updated;
+      }
+    );
+  },
+
+  submitEventRegistration: async (eventId = 1, submission) => {
+    return fetchWithFallback(
+      `${API_BASE}/events/${eventId}/register`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submission)
+      },
+      () => {
+        const form = getMockStore('registration_form', INITIAL_REGISTRATION_FORM);
+        const fields = form.fields || DEFAULT_REGISTRATION_FIELDS;
+        
+        // Validate required fields
+        const missing = [];
+        for (const f of fields) {
+          if (f.required && (!submission[f.id] || String(submission[f.id]).trim() === '')) {
+            missing.push(f.label || f.id);
+          }
+        }
+        if (missing.length > 0) {
+          throw new Error(`Mandatory fields missing: ${missing.join(', ')}`);
+        }
+
+        const registrations = getMockStore('registrations', []);
+        const newRecord = {
+          id: Date.now(),
+          event_id: Number(eventId),
+          user_name: submission.full_name || submission.name || 'Attendee',
+          user_email: submission.email || '',
+          registration_code: `TF26-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+          status: 'CONFIRMED',
+          form_data: submission,
+          registered_at: new Date().toISOString()
+        };
+
+        setMockStore('registrations', [newRecord, ...registrations]);
+        return newRecord;
+      }
+    );
+  },
+
+  getEventRegistrations: async (eventId = 1) => {
+    return fetchWithFallback(`${API_BASE}/events/${eventId}/registrations`, {}, () => {
+      return getMockStore('registrations', []);
     });
   }
 };
