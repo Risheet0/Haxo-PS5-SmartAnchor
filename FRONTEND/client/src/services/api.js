@@ -60,8 +60,16 @@ const fetchWithFallback = async (url, options = {}, mockHandler) => {
     };
     const res = await fetch(url, { ...options, headers: mergedHeaders });
     const contentType = res.headers.get('content-type') || '';
-    if (res.ok && contentType.includes('application/json')) {
-      return await res.json();
+    if (contentType.includes('application/json')) {
+      const data = await res.json();
+      if (!res.ok) {
+        return {
+          success: false,
+          status: res.status,
+          message: data.message || data.error || `HTTP ${res.status} Error`
+        };
+      }
+      return data;
     }
   } catch (err) {
     // Network failed or server offline -> use mock handler
@@ -72,6 +80,55 @@ const fetchWithFallback = async (url, options = {}, mockHandler) => {
 import { SASM_MOCK_EVENTS } from './sasmEventsData';
 
 export const api = {
+  getMe: async () => {
+    return fetchWithFallback(
+      `${API_BASE}/auth/me`,
+      { method: 'GET' },
+      () => {
+        try {
+          const saved = localStorage.getItem('sasm_user');
+          if (saved) {
+            return { success: true, user: JSON.parse(saved) };
+          }
+        } catch (e) {}
+        return { success: false, message: 'Unauthenticated' };
+      }
+    );
+  },
+
+  getSpeakerConsole: async (eventId) => {
+    const saved = localStorage.getItem('sasm_user');
+    const user = saved ? JSON.parse(saved) : null;
+    return fetchWithFallback(
+      `${API_BASE}/events/${eventId}/speaker-console`,
+      { method: 'GET' },
+      () => {
+        const ev = getMockStore('event', INITIAL_EVENT);
+        if (user && user.role === 'speaker' && String(user.event_id || 1) !== String(eventId)) {
+          return {
+            success: false,
+            status: 403,
+            message: 'Access Denied: You do not have permission to access this event.'
+          };
+        }
+        if (String(eventId) !== '1' && String(eventId) !== 'techfest-2026' && String(eventId) !== String(ev.id)) {
+          return {
+            success: false,
+            status: 404,
+            message: 'Event Not Found: The requested event could not be found.'
+          };
+        }
+        return {
+          success: true,
+          event: ev,
+          agenda: getMockStore('agenda', INITIAL_AGENDA),
+          speakers: getMockStore('speakers', INITIAL_SPEAKERS),
+          announcements: getMockStore('announcements', INITIAL_ANNOUNCEMENTS)
+        };
+      }
+    );
+  },
+
   login: async (credentials) => {
     return fetchWithFallback(
       `${API_BASE}/auth/login`,
@@ -91,8 +148,10 @@ export const api = {
             email: email.trim(),
             role: resolvedRole,
             event_id: 1,
+            eventId: 1,
             event_name: 'TechFest 2026',
             organization: 'TechFest 2026',
+            organizationId: 'org-1',
             email_verified: true,
             logged_in_at: new Date().toISOString()
           }
