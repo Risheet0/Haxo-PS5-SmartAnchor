@@ -37,13 +37,14 @@ const requireManagerRole = () => {
 const fetchWithFallback = async (url, options = {}, mockHandler) => {
   try {
     const res = await fetch(url, options);
-    if (res.ok) {
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
       return await res.json();
     }
   } catch (err) {
     // Network failed or server offline -> use mock handler
   }
-  return mockHandler();
+  return await mockHandler();
 };
 
 export const api = {
@@ -368,127 +369,523 @@ export const api = {
   },
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 4. AI SCRIPT SYNTHESIS WORKSPACE
+  // 4. AI SCRIPT SYNTHESIS WORKSPACE (LIVE GEMINI + LOCAL ENGINE FALLBACK)
   // ─────────────────────────────────────────────────────────────────────────
   generateScript: async (payload) => {
-    return fetchWithFallback(
-      `${API_BASE}/ai/generate`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      },
-      () => {
-        const {
-          scriptType = 'Speaker Introduction',
-          tone = 'Professional',
-          audience = 'Tech Community & Delegates',
-          customNotes = ''
-        } = payload;
+    const {
+      scriptType = 'Speaker Introduction',
+      tone = 'Professional',
+      length = 'Standard',
+      audience = 'Tech Community & Delegates',
+      customNotes = '',
+      speakerId,
+      topic: rawTopic
+    } = payload;
 
-        const event = getMockStore('event', INITIAL_EVENT);
-        const eventName = event?.name || 'TECHFEST 2026';
+    const event = getMockStore('event', INITIAL_EVENT);
+    const speakers = getMockStore('speakers', INITIAL_SPEAKERS);
+    const agenda = getMockStore('agenda', INITIAL_AGENDA);
+    const eventName = event?.name || 'TECHFEST 2026';
+    const venue = event?.venue || 'Grand Convention Center';
 
-        let generated = '';
+    // Resolve speaker details from payload or local store
+    const speaker = speakerId ? speakers.find(s => s.id === Number(speakerId)) : null;
+    const speakerName = payload.speakerName || speaker?.name || '';
+    const speakerOrg = payload.speakerOrg || speaker?.organization || '';
+    const speakerDesig = payload.speakerDesig || speaker?.designation || '';
+    const speakerBio = payload.speakerBio || speaker?.bio || '';
+    const speakerTopic = rawTopic || speaker?.topic || 'the next session';
+    const hasSpeakerInfo = Boolean(speakerName || speaker);
 
-        switch (scriptType) {
-          case 'Speaker Introduction':
-            generated = `[Stage Cue: Stand center stage, smile warmly, look directly at audience]
+    // ═══════════════════════════════════════════════════════════════════════
+    // STEP 1: TRY LIVE GOOGLE GEMINI AI API (PRIMARY)
+    // ═══════════════════════════════════════════════════════════════════════
+    try {
+      const geminiKey =
+        (typeof localStorage !== 'undefined' && localStorage.getItem('gemini_api_key')) ||
+        import.meta.env.VITE_GEMINI_API_KEY ||
+        '';
 
-"A very warm welcome to ${eventName}, esteemed delegates and guests!
+      if (geminiKey && geminiKey.length > 10 && geminiKey !== 'your_gemini_api_key_here') {
+        const lengthGuide = {
+          Short: 'Very concise, approx. 45-75 words. Punchy, focused, quick 30-45 seconds read with minimal stage cues.',
+          Standard: 'Medium length, approx. 140-220 words. Well-structured opening, core message, and warm closing with 2-3 stage cues.',
+          Detailed: 'Comprehensive and expansive, approx. 320-480 words. Rich storytelling, detailed stage cues [Stage Cue: ...], lighting/audio transitions, audience interaction, and grand introduction.'
+        }[length] || 'Medium length, 150-200 words.';
+
+        // Contextual activity details for transitions
+        const currAct = payload.currentActivityId ? agenda.find(a => a.id === Number(payload.currentActivityId)) : null;
+        const nextAct = payload.nextActivityId ? agenda.find(a => a.id === Number(payload.nextActivityId)) : null;
+        const transitionContext = currAct && nextAct
+          ? `\n- Transition Flow: Concluding "${currAct.title}" and introducing next segment "${nextAct.title}"`
+          : '';
+
+        const prompt = `You are an elite live stage anchor and emcee for "${eventName}" taking place at "${venue}".
+
+Generate an authentic, ready-to-speak live stage anchor script:
+- Script Type: ${scriptType}
+- Tone / Style: ${tone}
+- Target Length: ${length} (${lengthGuide})
+- Target Audience: ${audience}${transitionContext}
+${hasSpeakerInfo ? `- Featured Speaker: ${speakerName || 'Distinguished Guest'}${speakerDesig ? ` (${speakerDesig}${speakerOrg ? `, ${speakerOrg}` : ''})` : (speakerOrg ? ` (${speakerOrg})` : '')}
+${speakerBio ? `- Speaker Bio: ${speakerBio}\n` : ''}- Session Topic: ${speakerTopic}` : (speakerTopic ? `- Topic / Focus: ${speakerTopic}` : '')}
+${customNotes ? `- Special Talking Points / Custom Instructions: ${customNotes}` : ''}
+
+CRITICAL FORMATTING INSTRUCTIONS:
+1. Include realistic [Stage Cue: ...] brackets for physical actions, pacing, lighting/music cues, and audience interactions.
+2. Bold key speaker names, topics, and punchlines using markdown **bold**.
+3. Strictly respect the requested length (${length}).
+4. Output ONLY the anchor script and stage cues. No meta commentary or conversational filler.`;
+
+        // Try Gemini models in order of reliability
+        const candidateModels = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-flash-latest'];
+        for (const model of candidateModels) {
+          try {
+            console.log(`[Smart Anchor] Calling Gemini model: ${model}...`);
+            const geminiRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(geminiKey)}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: {
+                    temperature: 0.7,
+                    topP: 0.95
+                  }
+                })
+              }
+            );
+
+            if (geminiRes.ok) {
+              const data = await geminiRes.json();
+              const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (candidateText && candidateText.trim().length > 10) {
+                const scriptText = candidateText.trim();
+                console.log(`[Smart Anchor] ✅ Gemini ${model} returned ${scriptText.split(/\\s+/).length} words`);
+                return {
+                  script: scriptText,
+                  scriptType,
+                  tone,
+                  length,
+                  provider: `Google Gemini AI ⚡ Live`,
+                  wordCount: scriptText.split(/\s+/).filter(Boolean).length
+                };
+              }
+            } else {
+              console.warn(`[Smart Anchor] Model ${model} returned status ${geminiRes.status}`);
+            }
+          } catch (modelErr) {
+            console.warn(`[Smart Anchor] Model ${model} failed:`, modelErr.message);
+          }
+        }
+        console.warn('[Smart Anchor] All Gemini models failed, falling back to local engine');
+      } else {
+        console.log('[Smart Anchor] No API key found, using local engine');
+      }
+    } catch (apiErr) {
+      console.warn('[Smart Anchor] Gemini API error, falling back to local engine:', apiErr);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // STEP 2: LOCAL SMART TEMPLATE SYNTHESIS ENGINE (OFFLINE FALLBACK)
+    // ═══════════════════════════════════════════════════════════════════════
+    const toneMap = {
+      Professional: { greeting: 'Good morning', adj: 'distinguished', energy: 'confident', applause: 'warm round of applause' },
+      Formal: { greeting: 'Respected dignitaries', adj: 'esteemed', energy: 'composed', applause: 'generous appreciation' },
+      Friendly: { greeting: 'Hey everyone', adj: 'amazing', energy: 'relaxed', applause: 'big round of applause' },
+      Energetic: { greeting: 'What\'s up, everyone', adj: 'incredible', energy: 'electric', applause: 'thunderous round of applause' },
+      Technical: { greeting: 'Welcome, colleagues', adj: 'accomplished', energy: 'measured', applause: 'respectful acknowledgment' },
+      Short: { greeting: 'Hello everyone', adj: 'wonderful', energy: 'brisk', applause: 'warm welcome' }
+    };
+    const tv = toneMap[tone] || toneMap.Professional;
+
+    // Audience-specific flavoring
+    const audienceShort = audience.split('&')[0].trim();
+
+    // Build custom notes insertion
+    const notesBlock = customNotes
+      ? `\n\n[Stage Cue: Reference special talking points]\n\n${customNotes}\n`
+      : '';
+
+    // ─── SCRIPT BUILDERS BY TYPE ──────────────────────────────────
+    const builders = {
+      'Speaker Introduction': {
+        Short: () =>
+`[Stage Cue: Step center, smile at audience]
+
+"${tv.greeting}! Let's welcome **${speakerName}**${speakerOrg ? ` from **${speakerOrg}**` : ''} to the stage.
+
+${speakerDesig ? `A ${tv.adj} ${speakerDesig}, ` : ''}they'll be speaking on **${speakerTopic}**.
+
+[Stage Cue: Lead ${tv.applause}]
+
+Please welcome them with a ${tv.applause}!"${notesBlock}`,
+
+        Standard: () =>
+`[Stage Cue: Stand center stage, smile warmly, make direct eye contact with ${audienceShort}]
+
+"${tv.greeting}, ${tv.adj} delegates and guests! Welcome to this special session at **${eventName}**.
 
 [Stage Cue: Open hand gesture towards the stage entrance]
 
-It is our distinct honor to welcome our keynote speaker to the podium. With extensive pioneering contributions across the industry, today's session explores key technological breakthroughs.
+It is our privilege to introduce our next speaker — **${speakerName}**${speakerOrg ? `, representing **${speakerOrg}**` : ''}${speakerDesig ? `, serving as ${speakerDesig}` : ''}.
 
-[Stage Cue: Pause briefly for anticipation, lead enthusiastic applause]
+${speakerBio ? `[Stage Cue: Briefly glance at notes, maintain ${tv.energy} posture]\n\n${speakerBio.split('.').slice(0, 2).join('.')}.\n` : ''}
+Today, they will be sharing insights on **${speakerTopic}** — a topic that resonates deeply with our ${audienceShort} community.
 
-Please join me in extending a rousing round of applause!"`;
-            break;
+[Stage Cue: Pause for two beats, build anticipation]
 
-          case 'Opening Script':
-            generated = `[Stage Cue: Step confidently to center podium, broad engaging smile]
+This is a session you won't want to miss. Please join me in extending a ${tv.applause}!
 
-"Good morning, visionaries, innovators, and distinguished guests! Welcome to **${eventName}**!
+[Stage Cue: Step back, lead enthusiastic applause, gesture speaker to podium]"${notesBlock}`,
 
-[Stage Cue: Sweep gaze across the auditorium audience]
+        Detailed: () =>
+`[Stage Cue: Walk confidently to center podium, establish commanding ${tv.energy} presence, sweep gaze across all sections]
 
-Today we assemble to celebrate cutting-edge engineering, disruptive ideas, and high-impact stage demonstrations.
+"${tv.greeting}, ${tv.adj} delegates, honoured guests, faculty members, and esteemed members of the ${audienceShort} community! Welcome to this landmark session at **${eventName}** — hosted here at the **${venue}**.
 
-[Stage Cue: Signal AV team for opening video montage]
+[Stage Cue: Pause for three beats to build gravitas]
 
-Without further ado, let us officially inaugurate this milestone stage flow!"`;
-            break;
+Before I introduce our next speaker, let me take a moment to acknowledge the extraordinary journey that has brought us all together today. This event represents the convergence of bold ideas, transformative thinking, and collaborative brilliance that defines our generation.
 
-          case 'Transition Script':
-            generated = `[Stage Cue: Step center stage, maintain high energy and warm posture]
+[Stage Cue: Open hand gesture towards the stage entrance, maintain ${tv.energy} eye contact]
 
-"Thank you, everyone! A tremendous round of applause once again for that outstanding presentation.
+And speaking of brilliance — it is my absolute honour and distinct privilege to introduce someone who truly embodies the spirit of innovation and leadership.
 
-[Stage Cue: Acknowledge previous session with open palm]
+Ladies and gentlemen, please welcome **${speakerName}**${speakerOrg ? `, a visionary leader from **${speakerOrg}**` : ''}${speakerDesig ? `, currently serving as **${speakerDesig}**` : ''}.
 
-As we maintain our stage momentum here at ${eventName}, we are now transitioning directly into our next featured session.
+${speakerBio ? `[Stage Cue: Briefly reference speaker credentials with admiration]\n\n${speakerBio}\n` : ''}
+[Stage Cue: Slight forward lean to emphasize significance]
+
+Today, they bring to our stage an exceptionally timely and impactful discourse on **${speakerTopic}**. In a world where ${audienceShort.toLowerCase()} are navigating unprecedented technological shifts, this session promises to deliver actionable insights, fresh perspectives, and bold predictions that will shape the conversations for months to come.
+
+[Stage Cue: Transition energy — build towards audience participation]
+
+I personally had the privilege of previewing some of the key themes, and I can tell you — you are in for an absolute treat. The depth of research, the clarity of vision, and the practical frameworks being presented today set a new benchmark for thought leadership.
+
+[Stage Cue: Step back slightly, raise voice with enthusiasm]
+
+So without further ado — let us give **${speakerName}** the warmest, most ${tv.energy} welcome this auditorium has ever witnessed!
+
+[Stage Cue: Initiate standing ovation energy, lead sustained ${tv.applause}, gesture speaker to the podium with a respectful bow]
+
+${speakerName}, the stage is yours!"${notesBlock}`
+      },
+
+      'Opening Script': {
+        Short: () =>
+`[Stage Cue: Step to podium, bright smile]
+
+"${tv.greeting}! Welcome to **${eventName}**!
+
+We have an ${tv.adj} lineup of sessions ahead. Let's dive right in!
+
+[Stage Cue: Signal AV team to start]"${notesBlock}`,
+
+        Standard: () =>
+`[Stage Cue: Step confidently to center podium, broad engaging smile]
+
+"${tv.greeting}, visionaries, innovators, and ${tv.adj} guests! Welcome to **${eventName}** at the **${venue}**!
+
+[Stage Cue: Sweep gaze across the auditorium, acknowledge all sections of ${audienceShort}]
+
+Today marks a celebration of cutting-edge technology, disruptive ideas, and collaborative excellence. We have assembled a world-class roster of speakers, panel sessions, and live demonstrations designed to push the boundaries of what's possible.
+
+[Stage Cue: Project voice with ${tv.energy} authority]
+
+On behalf of the organising committee — ${event?.organizer_name || 'our dedicated team'} — we are thrilled to have you here. Over the coming hours, prepare to be inspired, challenged, and energized.
+
+[Stage Cue: Signal AV team for opening sequence]
+
+Without further ado, let us officially inaugurate **${eventName}**! Let the innovation begin!"${notesBlock}`,
+
+        Detailed: () =>
+`[Stage Cue: Walk to center stage with commanding ${tv.energy} presence, pause, take a breath, sweep panoramic gaze across the entire auditorium]
+
+"${tv.greeting}, ${tv.adj} delegates, industry pioneers, research scholars, government representatives, media partners, and every single passionate individual who has made the journey to be here today — welcome, welcome, welcome to **${eventName}**!
+
+[Stage Cue: Extend arms in welcoming gesture, smile broadly at every section]
+
+Standing here at the **${venue}**, looking out at this extraordinary gathering of minds, I am filled with an overwhelming sense of purpose. This is not just another event — this is a movement. A convergence point where the brightest ideas in technology, innovation, and human potential come together to chart the course of our shared future.
+
+[Stage Cue: Lower voice slightly for emphasis, lean forward]
+
+Let me share something with you. When our organising team — ${event?.organizer_name || 'our dedicated committee'} — first envisioned this edition, we asked ourselves one question: "How do we create an experience that doesn't just inform, but transforms?" And every session, every speaker, every demonstration you'll witness today was curated with exactly that ambition.
+
+[Stage Cue: Straighten up, resume ${tv.energy} projection]
+
+For our ${audienceShort} gathered here — you are the reason this event exists. Your curiosity drives our curation. Your feedback shapes our programming. And your energy is what transforms a conference hall into a launchpad for the extraordinary.
+
+[Stage Cue: Pause for dramatic emphasis — two full beats of silence]
+
+Today's agenda is packed with keynote masterclasses, breakthrough panel discussions, hands-on workshops, and live technology showcases that will challenge your assumptions and expand your horizons. We have ${speakers.length} exceptional speakers lined up — each a leader in their field, each bringing something truly unique to this stage.
+
+[Stage Cue: Gesture to the main stage screen as it illuminates]
+
+But before we begin — I want every single person in this room to make a promise to themselves: Be present. Ask hard questions. Network fiercely. And leave here today with at least one idea that will change how you think about what's possible.
+
+[Stage Cue: Signal AV team for opening video montage, build crescendo energy]
+
+So — are we ready? Let us officially inaugurate **${eventName}**! The future starts right now, right here!
+
+[Stage Cue: Lead opening applause, maintain high energy as lights shift to event theme]"${notesBlock}`
+      },
+
+      'Transition Script': {
+        Short: () =>
+`[Stage Cue: Step forward, maintain energy]
+
+"Wonderful session! A big ${tv.applause} for that presentation.
+
+[Stage Cue: Gesture to screen]
+
+Up next: **${speakerTopic}**. Let's keep the momentum going!"${notesBlock}`,
+
+        Standard: () =>
+`[Stage Cue: Step center stage, maintain high energy and ${tv.energy} posture]
+
+"Thank you, everyone! What a ${tv.adj} session that was — a tremendous ${tv.applause} once again!
+
+[Stage Cue: Acknowledge previous speaker with open palm gesture]
+
+As we maintain our stage momentum here at **${eventName}**, we are transitioning into our next featured session on **${speakerTopic}**.
 
 [Stage Cue: Direct audience attention to the main stage screen]
 
-Please ensure you are seated as we welcome our next participants to the floor!"`;
-            break;
+${speaker ? `Please welcome **${speakerName}**${speakerOrg ? ` from **${speakerOrg}**` : ''} as they take us through the next segment.` : 'Our next presenter is ready to deliver what promises to be another highlight of the day.'}
 
-          case 'Closing Script':
-            generated = `[Stage Cue: Stand tall center stage, warm reflective tone]
+[Stage Cue: Lead transitional applause, step aside]
+
+Please ensure you are seated. We begin in just a moment!"${notesBlock}`,
+
+        Detailed: () =>
+`[Stage Cue: Hold position center stage, allow previous speaker's applause to naturally conclude, then step forward with ${tv.energy} warmth]
+
+"What a phenomenal, absolutely ${tv.adj} session! I think I speak for everyone in this room when I say — that was exceptional. Let us give one more sustained ${tv.applause}!
+
+[Stage Cue: Lead extended applause, acknowledge departing speaker with respectful nod]
+
+Now — I know that energy is running high, and rightfully so. What you've just witnessed is the kind of thought leadership that defines events like **${eventName}**. The insights shared will undoubtedly spark conversations long after we leave the ${venue} today.
+
+[Stage Cue: Shift posture slightly to signal transition, modulate vocal tone]
+
+And if you thought that was impressive — we're just getting started. Our programming team has sequenced today's sessions for maximum impact, and our next segment continues to build on those themes.
+
+[Stage Cue: Open hand gesture to the main display as it refreshes]
+
+We are now transitioning into a session on **${speakerTopic}**. ${speaker ? `Taking the stage is **${speakerName}**${speakerOrg ? `, representing **${speakerOrg}**` : ''}${speakerDesig ? `, serving as ${speakerDesig}` : ''}. ${speakerBio ? speakerBio.split('.')[0] + '.' : ''}` : 'Our next presenter brings a wealth of experience and a fresh perspective that perfectly complements what we\'ve experienced so far.'}
+
+[Stage Cue: Build anticipation with slight pause]
+
+For our ${audienceShort} — this is a session where I encourage you to have your notepads ready. The practical takeaways here will be significant.
+
+[Stage Cue: Step back with open gesture, lead welcoming ${tv.applause}]
+
+Please welcome them to the stage with your warmest appreciation!"${notesBlock}`
+      },
+
+      'Closing Script': {
+        Short: () =>
+`[Stage Cue: Stand center, warm smile]
+
+"What an incredible day at **${eventName}**! Thank you all for your energy and participation.
+
+[Stage Cue: Bow respectfully]
+
+Travel safely, and see you at the next edition!"${notesBlock}`,
+
+        Standard: () =>
+`[Stage Cue: Stand tall center stage, warm reflective tone]
 
 "What an extraordinary day of innovation, insights, and breakthrough collaboration here at **${eventName}**!
 
-[Stage Cue: Acknowledge organizers, stage crew, and audience]
+[Stage Cue: Acknowledge organizers, stage crew, and ${audienceShort}]
 
-On behalf of the entire organizing committee and our AV teams, we extend our heartfelt gratitude for your energy and participation.
+We witnessed ${speakers.length || 'multiple'} exceptional speakers, each bringing their unique expertise and vision to this stage. From cutting-edge research to practical industry frameworks, today's sessions have set a new benchmark for excellence.
 
-[Stage Cue: Deep respectful bow, lead final standing ovation]
+On behalf of the organising committee — ${event?.organizer_name || 'our entire team'} — we extend our heartfelt gratitude for your energy, engagement, and participation.
 
-Thank you, travel safely, and we look forward to seeing you at our next grand edition!"`;
-            break;
+[Stage Cue: Warm, personal tone]
 
-          case 'Delay Announcement':
-            generated = `[Stage Cue: Step center stage with calm, reassuring composure]
+To our speakers, panelists, volunteers, AV crew, and every single person who made this event possible — thank you from the bottom of our hearts.
+
+[Stage Cue: Deep respectful bow, lead final applause]
+
+Travel safely, stay connected, and we look forward to welcoming you at our next grand edition!"${notesBlock}`,
+
+        Detailed: () =>
+`[Stage Cue: Walk to center stage for the final time, take a moment to look across the auditorium, let the significance of the moment settle]
+
+"${tv.adj} delegates, honoured guests, and every single member of the ${audienceShort} community who has been part of this ${tv.adj} journey — we have arrived at the closing chapter of **${eventName}**.
+
+[Stage Cue: Pause — allow the weight of the day to resonate]
+
+What a day this has been. Let me take you back to where we started this morning — a room full of anticipation, curiosity, and possibility. And now, as we stand here at the finish line, I want each of you to reflect on how much ground we've covered.
+
+[Stage Cue: Begin slow walk across the stage, maintaining intimate connection with audience]
+
+We heard from ${speakers.length || 'some of the most'} brilliant minds in their respective fields. ${speakers.length > 0 ? `From **${speakers[0]?.name}**'s compelling opening on ${speakers[0]?.topic || 'cutting-edge innovation'}${speakers.length > 1 ? `, to **${speakers[speakers.length - 1]?.name}**'s powerful closing insights` : ''} — every session delivered substance, depth, and genuine value.` : 'Every session was carefully crafted to deliver substance, depth, and genuine value.'}
+
+[Stage Cue: Pause, shift to personal and grateful tone]
+
+But an event of this calibre doesn't happen by accident. Behind every smooth transition, every perfectly timed AV cue, every seamless speaker handoff — there is a team of extraordinary individuals working tirelessly behind the scenes.
+
+To our organising committee, ${event?.organizer_name || 'our dedicated team'} — your vision made this possible. To our technology and operations crew — your precision made it flawless. To our volunteers — your warmth made it welcoming. And to our sponsors and partners — your investment made it sustainable.
+
+[Stage Cue: Turn to face the full audience, voice rising with genuine emotion]
+
+And most importantly — to every single one of you seated here. **You** are the heartbeat of this event. Your questions challenged our speakers. Your energy filled this hall. Your passion reminded all of us why we do what we do.
+
+[Stage Cue: Straighten posture, shift to forward-looking energy]
+
+As you leave the **${venue}** today, I want to leave you with one thought: The conversations that started on this stage are not meant to end here. Take them forward. Build on them. Challenge them. Share them. Let the ideas you encountered today become the innovations you create tomorrow.
+
+[Stage Cue: Final dramatic pause — three full beats of silence]
+
+On behalf of everyone who made **${eventName}** possible — from the bottom of our hearts — thank you. Thank you for being here, for being engaged, and for being part of something truly special.
+
+[Stage Cue: Deep, respectful bow — hold for three seconds]
+
+Travel safely, stay inspired, and we cannot wait to welcome you back for our next edition. Until then — keep pushing boundaries, keep asking questions, and keep building the future.
+
+[Stage Cue: Step back, lead sustained standing ovation, wave warmly as event theme music plays]
+
+Thank you, **${eventName}**! This has been unforgettable!"${notesBlock}`
+      },
+
+      'Delay Announcement': {
+        Short: () =>
+`[Stage Cue: Step forward calmly]
+
+"A quick note — we're taking a brief 10-minute pause for technical adjustments. Please enjoy networking.
+
+[Stage Cue: Reassuring smile]
+
+We'll be right back!"${notesBlock}`,
+
+        Standard: () =>
+`[Stage Cue: Step center stage with calm, reassuring composure]
 
 "Ladies and gentlemen, your attention for a brief administrative note:
 
-[Stage Cue: Maintain reassuring eye contact with delegates]
+[Stage Cue: Maintain reassuring eye contact with ${audienceShort}]
 
-We are currently taking a short 10-minute pause to finalize technical AV calibration. Please feel free to network and check out our demonstration booths in the foyer.
+We are currently taking a short pause to finalise some technical calibrations and ensure the best possible experience for our upcoming sessions. This is expected to last approximately 10 minutes.
 
-[Stage Cue: Conclude with warm smile]
+[Stage Cue: Gesture towards foyer/networking area]
 
-We will resume our live stage program promptly in 10 minutes. Thank you for your patience!"`;
-            break;
+In the meantime, please feel free to visit our demonstration booths in the foyer, connect with fellow delegates, or grab a refreshment. Our team is working diligently to resume promptly.
 
-          case 'Emergency Announcement':
-            generated = `[Stage Cue: Step forward calmly, maintain authoritative yet reassuring posture]
+[Stage Cue: Conclude with warm smile and reassuring nod]
 
-"Ladies and gentlemen, your attention please:
+Thank you for your patience and understanding. We'll be back before you know it!"${notesBlock}`,
 
-${customNotes || 'Please remain seated while we resolve a brief technical pause.'}
+        Detailed: () =>
+`[Stage Cue: Walk to center podium with calm composure and reassuring body language]
 
-[Stage Cue: Pause for 3 seconds, nod respectfully]
+"${tv.adj} delegates, honoured guests, and all members of our wonderful ${audienceShort} community — may I have your attention for just a moment?
 
-We appreciate your cooperation as our operations team resumes our scheduled flow immediately."`;
-            break;
+[Stage Cue: Maintain steady, reassuring eye contact — project calm authority]
 
-          default:
-            generated = `[Stage Cue: Stand center stage, address the room with clear projection]
+I want to be fully transparent with you, as you deserve nothing less. Our technical operations team has identified a calibration requirement that needs to be addressed before we proceed with our next session. This is a routine adjustment, and our AV engineers are already working on it.
 
-"Welcome delegates to ${eventName}. We are proceeding with our scheduled stage rundown."`;
-            break;
-        }
+[Stage Cue: Open, honest palm gesture]
 
-        return {
-          script: generated,
-          scriptType,
-          tone,
-          wordCount: generated.split(/\s+/).length
-        };
+We anticipate this brief intermission will last approximately 10-15 minutes. I know your time is incredibly valuable, and I assure you that we are doing everything in our power to minimise this pause.
+
+[Stage Cue: Shift to warm, encouraging tone]
+
+But rather than seeing this as a delay, I'd love for you to see it as an opportunity. Some of the best conversations at events like **${eventName}** happen in the corridors, over coffee, and at the demo stations.
+
+Our demonstration booths in the foyer are showcasing some truly impressive technology from our sponsors and partners. Our networking lounge is open and ready. And our refreshment stations have been restocked.
+
+[Stage Cue: Smile warmly, project genuine care]
+
+I've seen some of the content that's coming up in our next sessions, and I can personally promise you — it will be worth the wait. The best is truly yet to come.
+
+[Stage Cue: Check watch subtly, maintain composure]
+
+We will make an announcement as soon as we are ready to resume. Thank you for your incredible patience and understanding. Events of this scale require precision, and we'd rather take a moment now to deliver perfection than rush through anything less than excellent.
+
+[Stage Cue: Step back with reassuring nod and warm smile]
+
+See you all back in your seats shortly!"${notesBlock}`
+      },
+
+      'Emergency Announcement': {
+        Short: () =>
+`[Stage Cue: Step forward calmly]
+
+"Your attention, please. ${customNotes || 'We are addressing a brief operational matter.'}
+
+[Stage Cue: Reassuring nod]
+
+Thank you for your cooperation."${notesBlock}`,
+
+        Standard: () =>
+`[Stage Cue: Step forward with calm authority, maintain composed posture]
+
+"Ladies and gentlemen, your attention please.
+
+[Stage Cue: Make deliberate eye contact across all sections]
+
+${customNotes || 'Our operations team is currently addressing a situation that requires your cooperation. Please remain in your seats and follow any instructions from our event staff.'}
+
+[Stage Cue: Maintain steady, reassuring presence]
+
+Your safety and comfort remain our absolute top priority. Our team is fully trained and prepared for situations like this, and we have everything under control.
+
+[Stage Cue: Pause for 3 seconds, project calm confidence]
+
+We appreciate your patience and understanding. We will provide you with an update shortly."${notesBlock}`,
+
+        Detailed: () =>
+`[Stage Cue: Walk to center stage promptly but without urgency, project calm authoritative presence, maintain measured breathing]
+
+"${tv.adj} delegates and honoured guests — may I please have your full attention for an important announcement.
+
+[Stage Cue: Make deliberate, sweeping eye contact across all sections of the auditorium]
+
+${customNotes || 'Our operations and safety team has identified a matter that requires our collective attention. I want to assure every single person in this room that our team has been thoroughly trained for exactly these situations, and we have robust protocols in place.'}
+
+[Stage Cue: Pause for three full seconds — allow the message to register, maintain absolute composure]
+
+Here is what I'd like to ask of you: Please remain calmly in your seats. If you are in the corridors or foyer area, please follow the guidance of our event marshals who are clearly identifiable by their high-visibility jackets. There is no need for concern — we are taking precautionary measures to ensure your complete safety and comfort.
+
+[Stage Cue: Modulate tone to warm and reassuring]
+
+Your wellbeing is, and always will be, our number one priority at **${eventName}**. Our security team, medical support staff, and venue management are all coordinating seamlessly as I speak.
+
+[Stage Cue: Slight forward lean to convey personal sincerity]
+
+I will personally ensure that you receive regular updates every few minutes until the situation is fully resolved. In the meantime, please look after those around you, stay hydrated, and know that we are in excellent hands.
+
+[Stage Cue: Nod respectfully, step back with calm composure]
+
+Thank you for your incredible composure, cooperation, and trust. We will have you back to enjoying our programme very shortly."${notesBlock}`
       }
-    );
+    };
+
+    // ─── SELECT AND GENERATE ──────────────────────────────────────
+    const typeBuilder = builders[scriptType] || builders['Speaker Introduction'];
+
+    // Normalize length key
+    let lengthKey = 'Standard';
+    if (length === 'Short' || tone === 'Short') lengthKey = 'Short';
+    else if (length === 'Detailed') lengthKey = 'Detailed';
+
+    const buildFn = typeBuilder[lengthKey] || typeBuilder['Standard'];
+    const generated = buildFn();
+
+    return {
+      script: generated,
+      scriptType,
+      tone,
+      length: lengthKey,
+      provider: 'Intelligent Stage AI Engine (Offline Mode)',
+      wordCount: generated.split(/\s+/).filter(Boolean).length
+    };
   },
 
   generateEmergencyAnnouncement: async (payload) => {
