@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import StatusBadge from '../components/ui/StatusBadge';
 import LiveTimerEngine from '../components/ui/LiveTimerEngine';
-<<<<<<< HEAD
 import LiveStatusBar from '../components/live/LiveStatusBar';
 import ControlCenter from '../components/live/ControlCenter';
 import AttentionPanel from '../components/live/AttentionPanel';
@@ -32,9 +31,6 @@ import SessionHealth from '../components/live/SessionHealth';
 import NextSpeakerPrep from '../components/live/NextSpeakerPrep';
 import EventTimeline from '../components/live/EventTimeline';
 import { formatTimer, getSpeakerAvatar, parseStageScript } from '../utils/formatters';
-=======
-import { getSpeakerAvatar, parseStageScript } from '../utils/formatters';
->>>>>>> 6a0311911a9896e8e5c343f162ceabd9357e93e2
 import { api } from '../services/api';
 import { useToast } from '../components/ui/ToastContext';
 import EmptyState from '../components/ui/EmptyState';
@@ -59,13 +55,10 @@ export default function LiveControlView({
 }) {
   const toast = useToast();
   const [isConfirmSkipOpen, setIsConfirmSkipOpen] = useState(false);
-<<<<<<< HEAD
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
   const [isConfirmEndOpen, setIsConfirmEndOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   // Current active session index
-=======
->>>>>>> 6a0311911a9896e8e5c343f162ceabd9357e93e2
   const [activeSessionIndex, setActiveSessionIndex] = useState(() => {
     const liveIdx = agenda.findIndex(a => a.status === 'LIVE');
     if (liveIdx !== -1) return liveIdx;
@@ -76,7 +69,6 @@ export default function LiveControlView({
   const currentActivity = agenda[activeSessionIndex] || agenda[0];
   const nextActivity = activeSessionIndex + 1 < agenda.length ? agenda[activeSessionIndex + 1] : null;
 
-<<<<<<< HEAD
   // Real-time Timer Engine with Start/Pause/Resume & Local Storage Persistence
   const durationMins = currentActivity?.duration_minutes || 30;
   const totalDurationSecs = durationMins * 60;
@@ -87,11 +79,6 @@ export default function LiveControlView({
     }
     return 18 * 60 + 42;
   });
-=======
-  const durationMins = currentActivity?.duration_minutes || 30;
-  const totalDurationSecs = durationMins * 60;
-  const [elapsedSecs, setElapsedSecs] = useState(18 * 60 + 42);
->>>>>>> 6a0311911a9896e8e5c343f162ceabd9357e93e2
   const [isTimerRunning, setIsTimerRunning] = useState(true);
 
   // Sync / persist elapsed time across page refreshes
@@ -318,12 +305,11 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
   }
 
   return (
-    <div className="p-4 sm:p-8 space-y-6 max-w-[1600px] mx-auto select-none animate-fade-in">
+    <div className="p-3 sm:p-5 lg:p-6 space-y-4 max-w-[1600px] mx-auto select-none animate-fade-in">
 
       {/* ─────────────────────────────────────────────────────────────
           TOP CONTROL BAR: LIVE EVENT STATUS BAR
           ───────────────────────────────────────────────────────────── */}
-<<<<<<< HEAD
       <LiveStatusBar
         event={event}
         currentActivity={currentActivity}
@@ -345,25 +331,6 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
             <span>
               <strong>CONNECTION LOST:</strong> Reconnecting to real-time stage operations server... Remote telemetry paused.
             </span>
-=======
-      <div className="p-5 soft-card flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-            <Radio className="w-5 h-5 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-                Stage Master Console
-              </h2>
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
-                SESSION #{currentActivity?.order_index || 1} OF {agenda.length}
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Live event operations, real-time anchor prompting, and delay cascading
-            </p>
->>>>>>> 6a0311911a9896e8e5c343f162ceabd9357e93e2
           </div>
           <span className="font-mono text-[10px] text-red-600 bg-red-100 border border-red-200 px-2 py-0.5 rounded font-bold">
             OFFLINE MODE
@@ -371,7 +338,6 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
         </div>
       )}
 
-<<<<<<< HEAD
       {/* ─────────────────────────────────────────────────────────────
           OPERATIONAL CONTROL CENTER (FULL WIDTH)
           ───────────────────────────────────────────────────────────── */}
@@ -421,27 +387,6 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
           onOpenStageDisplay={onOpenStageDisplay}
           onToggleTimer={handleToggleTimer}
         />
-=======
-        {/* Global Shortcut Actions */}
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={onOpenStageDisplay}
-            className="btn-pill-secondary text-xs flex items-center gap-1.5"
-            title="Open Fullscreen Projector Confidence Monitor"
-          >
-            <Tv className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Confidence HUD</span>
-          </button>
-
-          <button
-            onClick={() => onOpenDelay({ targetActivityId: currentActivity?.id })}
-            className="btn-pill-secondary text-xs flex items-center gap-1.5 text-amber-800 bg-amber-50 hover:bg-amber-100 border-amber-200"
-          >
-            <Hourglass className="w-3.5 h-3.5 text-amber-600" />
-            <span>+10m Delay</span>
-          </button>
-        </div>
->>>>>>> 6a0311911a9896e8e5c343f162ceabd9357e93e2
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
@@ -461,20 +406,20 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
       {/* ─────────────────────────────────────────────────────────────
           MASTER 3-COLUMN CONTROL ROOM LAYOUT
           ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
         {/* ═════════════════════════════════════════════════════════════
             LEFT COLUMN (4 Cols): CURRENT SESSION & TIMING ENGINE
             ═════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-4 space-y-6">
-          <div className="p-6 soft-card space-y-5 relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-red-500" />
+        <div className="lg:col-span-4 space-y-4">
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-red-500" />
 
             {/* Current Session Header */}
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-50 text-red-600 border border-red-200">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-50 text-red-700 border border-red-200">
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                Live Session
+                LIVE SESSION
               </span>
 
               <StatusBadge status={currentActivity?.status || 'LIVE'} size="sm" />
@@ -482,14 +427,14 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
 
             {/* Session Title */}
             <div>
-              <span className="text-[11px] font-semibold text-slate-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono">
                 Activity #{currentActivity?.order_index} • {currentActivity?.activity_type}
               </span>
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-snug mt-1">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-tight mt-1">
                 {currentActivity?.title}
-              </h3>
+              </h2>
               {currentActivity?.notes && (
-                <p className="text-xs text-slate-600 mt-2 p-3 rounded-2xl bg-slate-50 border border-slate-100 leading-relaxed font-normal">
+                <p className="text-xs text-slate-600 mt-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 leading-relaxed">
                   {currentActivity.notes}
                 </p>
               )}
@@ -497,18 +442,18 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
 
             {/* Speaker Card */}
             {currentActivity?.speaker_name ? (
-              <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-150 flex items-center gap-3.5">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
                 <img
                   src={getSpeakerAvatar(currentActivity.speaker_name, currentActivity.speaker_avatar)}
                   alt={currentActivity.speaker_name}
-                  className="w-12 h-12 rounded-2xl object-cover border border-slate-200 bg-white flex-shrink-0 shadow-sm"
+                  className="w-12 h-12 rounded-xl object-cover border border-slate-200 bg-slate-100 flex-shrink-0"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-slate-900 truncate">
+                    <h3 className="text-sm font-bold text-slate-900 truncate">
                       {currentActivity.speaker_name}
-                    </h4>
-                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    </h3>
+                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                       ON STAGE
                     </span>
                   </div>
@@ -523,7 +468,7 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
                 </div>
               </div>
             ) : (
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-500 flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
                 <User className="w-4 h-4 text-slate-400" />
                 <span>Emcee / Anchor Presentation</span>
               </div>
@@ -534,13 +479,15 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
               durationMinutes={currentActivity?.duration_minutes || 30}
               initialElapsedSeconds={18 * 60 + 42}
               isRunning={isTimerRunning}
-              onStateChange={({ elapsedSecs: el, running }) => {
+              onStateChange={({ elapsedSecs: el, remainingSecs: rem, running }) => {
                 setElapsedSecs(el);
                 setIsTimerRunning(running);
               }}
+              onComplete={() => {
+                console.log('Session duration reached planned conclusion');
+              }}
             />
 
-<<<<<<< HEAD
             {/* Session Action Footer */}
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-xs">
               <span className="text-slate-500 font-mono text-[11px]">
@@ -552,32 +499,6 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
                   disabled={isUpdatingStatus}
                   onClick={() => handleUpdateStatusWithFeedback(currentActivity.id, 'LIVE')}
                   className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-xs transition active:scale-95 shadow-sm flex items-center gap-1.5"
-=======
-            {/* Critical Operations Action Buttons */}
-            <div className="pt-3 border-t border-slate-100 space-y-2">
-              <div className="grid grid-cols-2 gap-2.5">
-                {currentActivity?.status !== 'LIVE' ? (
-                  <button
-                    onClick={() => onUpdateStatus(currentActivity.id, 'LIVE')}
-                    className="btn-pill-accent text-xs flex items-center justify-center gap-1.5 py-2.5"
-                  >
-                    <Play className="w-4 h-4 fill-white" />
-                    <span>START</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => onUpdateStatus(currentActivity.id, 'COMPLETED')}
-                    className="btn-pill-danger text-xs flex items-center justify-center gap-1.5 py-2.5"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>END SESSION</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={() => onOpenDelay({ targetActivityId: currentActivity.id })}
-                  className="btn-pill-secondary text-xs flex items-center justify-center gap-1.5 text-amber-800 bg-amber-50 hover:bg-amber-100 border-amber-200 py-2.5"
->>>>>>> 6a0311911a9896e8e5c343f162ceabd9357e93e2
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                   <span>START SESSION</span>
@@ -600,16 +521,16 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
         {/* ═════════════════════════════════════════════════════════════
             CENTER COLUMN (5 Cols): ANCHOR SCRIPT / TELEPROMPTER
             ═════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-5 space-y-6 flex flex-col">
-          <div className="p-6 soft-card flex flex-col h-full min-h-[580px] space-y-4">
+        <div className="lg:col-span-5 space-y-4 flex flex-col">
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col h-full min-h-[560px]">
             
             {/* Script Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-3.5 border-b border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3.5 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-indigo-600" />
-                <h3 className="text-sm font-bold text-slate-800">
-                  Anchor Script & Stage Cues
-                </h3>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                  ANCHOR SCRIPT & STAGE CUES
+                </span>
               </div>
 
               <div className="flex items-center gap-1.5">
@@ -618,7 +539,7 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
                     if (activeSessionIndex > 0) setActiveSessionIndex(activeSessionIndex - 1);
                   }}
                   disabled={activeSessionIndex === 0}
-                  className="p-2 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-600 disabled:opacity-30 border border-slate-200"
+                  className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 disabled:opacity-30 border border-slate-200"
                   title="Previous Session Script"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -629,7 +550,7 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
                     if (activeSessionIndex < agenda.length - 1) setActiveSessionIndex(activeSessionIndex + 1);
                   }}
                   disabled={activeSessionIndex === agenda.length - 1}
-                  className="p-2 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-600 disabled:opacity-30 border border-slate-200"
+                  className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 disabled:opacity-30 border border-slate-200"
                   title="Next Session Script"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -637,9 +558,9 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
 
                 <button
                   onClick={() => setIsEditingScript(!isEditingScript)}
-                  className={`p-2 rounded-full border text-xs transition ${
+                  className={`p-1.5 rounded-lg border text-xs transition ${
                     isEditingScript
-                      ? 'bg-slate-900 text-white border-slate-900'
+                      ? 'bg-indigo-600 text-white border-indigo-500'
                       : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
                   }`}
                   title="Toggle Edit Mode"
@@ -650,7 +571,7 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
                 <button
                   onClick={handleRegenerateScript}
                   disabled={generatingScript}
-                  className="p-2 rounded-full bg-white hover:bg-slate-100 text-indigo-700 border border-indigo-200 shadow-sm"
+                  className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-indigo-700 border border-indigo-200 shadow-sm"
                   title="Regenerate with AI"
                 >
                   <RotateCcw className={`w-4 h-4 ${generatingScript ? 'animate-spin' : ''}`} />
@@ -658,7 +579,7 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
 
                 <button
                   onClick={handleCopyScript}
-                  className="p-2 rounded-full bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
+                  className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
                   title="Copy Script"
                 >
                   {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
@@ -666,7 +587,7 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
 
                 <button
                   onClick={handleToggleVoice}
-                  className={`p-2 rounded-full border transition ${
+                  className={`p-1.5 rounded-lg border transition ${
                     isSpeaking
                       ? 'bg-rose-600 text-white border-rose-500 animate-pulse'
                       : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
@@ -678,7 +599,7 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
 
                 <button
                   onClick={() => onOpenTeleprompter(scriptText)}
-                  className="btn-pill-primary text-xs px-3.5 py-1.5 flex items-center gap-1.5"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition shadow-sm"
                   title="Launch Big Fullscreen Teleprompter"
                 >
                   <Tv className="w-3.5 h-3.5" />
@@ -688,22 +609,22 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
             </div>
 
             {/* Script Display / Editor Surface */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 py-4 overflow-y-auto">
               {isEditingScript ? (
                 <textarea
                   rows={14}
                   value={scriptText}
                   onChange={(e) => setScriptText(e.target.value)}
-                  className="w-full h-full min-h-[380px] p-4 rounded-2xl bg-white border border-indigo-300 text-slate-900 text-sm font-sans leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none font-medium"
+                  className="w-full h-full min-h-[380px] p-4 rounded-xl bg-white border border-indigo-300 text-slate-900 text-sm font-sans leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none font-medium"
                 />
               ) : (
-                <div className="p-5 rounded-2xl bg-slate-50/80 border border-slate-100 h-full min-h-[380px] space-y-3 font-sans">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 h-full min-h-[380px] space-y-3 font-sans">
                   {parsedScript.map((item, idx) => {
                     if (item.type === 'cue') {
                       return (
                         <div
                           key={idx}
-                          className="my-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold uppercase tracking-wider inline-block"
+                          className="my-2.5 px-3 py-1 rounded bg-amber-50 border border-amber-200 text-amber-800 font-mono text-xs font-bold uppercase tracking-wider inline-block"
                         >
                           ⚡ {item.content}
                         </div>
@@ -723,12 +644,12 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
             </div>
 
             {/* Legend info */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-              <span className="flex items-center gap-1.5 text-amber-700">
+            <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+              <span className="flex items-center gap-1.5 text-amber-700 font-mono">
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
                 Amber chips = Stage movements & cues (Do not read aloud)
               </span>
-              <span className="font-mono">
+              <span className="font-mono text-slate-400">
                 {scriptText.split(/\s+/).filter(Boolean).length} words
               </span>
             </div>
@@ -738,14 +659,14 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
         {/* ═════════════════════════════════════════════════════════════
             RIGHT COLUMN (3 Cols): UP NEXT & QUICK OPERATIONS PANEL
             ═════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="lg:col-span-3 space-y-4">
           
           {/* UP NEXT PREVIEW */}
-          <div className="p-6 soft-card space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-1">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1">
                 <ChevronRight className="w-3.5 h-3.5" />
-                Up Next
+                UP NEXT
               </span>
               {nextActivity && (
                 <span className="text-xs font-mono font-bold text-slate-700">
@@ -755,41 +676,40 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
             </div>
 
             {nextActivity ? (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <div>
-                  <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
                     {nextActivity.activity_type}
                   </span>
-                  <h4 className="text-sm font-bold text-slate-900 mt-1.5">
+                  <h4 className="text-sm font-bold text-slate-900 mt-1">
                     {nextActivity.title}
                   </h4>
-                  <p className="text-xs text-slate-500 font-mono mt-0.5">
+                  <p className="text-[11px] text-slate-500 font-mono mt-0.5">
                     {nextActivity.duration_minutes} min session
                   </p>
                 </div>
 
                 {nextActivity.speaker_name && (
-                  <div className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
                     <img
                       src={getSpeakerAvatar(nextActivity.speaker_name, nextActivity.speaker_avatar)}
                       alt={nextActivity.speaker_name}
-                      className="w-8 h-8 rounded-xl object-cover"
+                      className="w-7 h-7 rounded-md object-cover"
                     />
                     <div className="text-xs min-w-0">
-                      <p className="font-bold text-slate-900 truncate">{nextActivity.speaker_name}</p>
-                      <p className="text-slate-500 truncate">{nextActivity.speaker_org}</p>
+                      <p className="font-semibold text-slate-900 truncate">{nextActivity.speaker_name}</p>
+                      <p className="text-[10px] text-slate-500 truncate">{nextActivity.speaker_org}</p>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <p className="text-xs text-slate-400 text-center py-2">
+              <p className="text-xs text-slate-500 text-center py-2">
                 Concludes full event flow.
               </p>
             )}
           </div>
 
-<<<<<<< HEAD
           {/* STAGE ACTIVITY LOG FEED */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2.5">
             <div className="flex items-center justify-between pb-2 border-b border-slate-200">
@@ -816,70 +736,6 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
               ) : (
                 <p className="text-xs text-slate-400 text-center py-2 font-mono">No stage logs recorded yet.</p>
               )}
-=======
-          {/* CRITICAL QUICK ACTIONS PANEL */}
-          <div className="p-6 soft-card space-y-3">
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-slate-100">
-              <Layers className="w-3.5 h-3.5 text-indigo-600" />
-              Quick Actions
-            </h3>
-
-            <div className="grid grid-cols-1 gap-2">
-              <button
-                onClick={() => onOpenDelay({ targetActivityId: currentActivity?.id })}
-                className="flex items-center justify-between p-3 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold transition"
-              >
-                <div className="flex items-center gap-2">
-                  <Hourglass className="w-4 h-4 text-amber-600" />
-                  <span>+ Delay Schedule</span>
-                </div>
-                <span className="text-[10px] font-mono">+5m/+10m</span>
-              </button>
-
-              <button
-                onClick={onOpenEmergency}
-                className="flex items-center justify-between p-3 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-semibold transition"
-              >
-                <div className="flex items-center gap-2">
-                  <MessageSquarePlus className="w-4 h-4 text-blue-600" />
-                  <span>+ Announcement</span>
-                </div>
-                <span className="text-[10px] font-mono">AI Memo</span>
-              </button>
-
-              <button
-                onClick={onOpenEmergency}
-                className="flex items-center justify-between p-3 rounded-2xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold transition"
-              >
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-600" />
-                  <span>+ Emergency Alert</span>
-                </div>
-                <span className="text-[10px] font-mono">Broadcast</span>
-              </button>
-
-              <button
-                onClick={() => setIsConfirmSkipOpen(true)}
-                className="flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold transition shadow-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <SkipForward className="w-4 h-4 text-slate-400" />
-                  <span>Next Session</span>
-                </div>
-                <span className="text-[10px] font-mono">Next &rarr;</span>
-              </button>
-
-              <button
-                onClick={() => setIsNoteModalOpen(true)}
-                className="flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold transition shadow-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <StickyNote className="w-4 h-4 text-indigo-600" />
-                  <span>+ Stage Note</span>
-                </div>
-                <span className="text-[10px] font-mono">Cue</span>
-              </button>
->>>>>>> 6a0311911a9896e8e5c343f162ceabd9357e93e2
             </div>
           </div>
 
@@ -896,34 +752,34 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
           </button>
 
           {/* MINI STAGE SCHEDULE QUEUE */}
-          <div className="p-6 soft-card space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2.5">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                 <ListOrdered className="w-3.5 h-3.5 text-indigo-600" />
                 Schedule Queue
               </span>
-              <span className="text-xs text-slate-400 font-mono">{agenda.length} items</span>
+              <span className="text-[10px] text-slate-500 font-mono">{agenda.length} items</span>
             </div>
 
-            <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
               {agenda.map((item, idx) => {
                 const isCurrent = idx === activeSessionIndex;
                 return (
                   <button
                     key={item.id}
                     onClick={() => setActiveSessionIndex(idx)}
-                    className={`w-full text-left p-2.5 rounded-xl text-xs transition flex items-center justify-between gap-2 ${
+                    className={`w-full text-left p-2 rounded-lg text-xs transition flex items-center justify-between gap-2 ${
                       isCurrent
-                        ? 'bg-slate-900 text-white font-bold shadow-sm'
+                        ? 'bg-indigo-50 border border-indigo-200 text-indigo-950 font-bold'
                         : item.status === 'COMPLETED'
-                        ? 'bg-slate-50 border border-slate-100 text-slate-400 opacity-60'
-                        : 'bg-white border border-slate-100 text-slate-700 hover:border-slate-200 hover:bg-slate-50'
+                        ? 'bg-slate-50 border border-slate-200 text-slate-400 opacity-60'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
-                    <span className="truncate">
+                    <span className="truncate font-mono text-[11px]">
                       #{item.order_index} {item.title}
                     </span>
-                    <span className={`text-[10px] font-mono flex-shrink-0 ${isCurrent ? 'text-slate-300' : 'text-slate-400'}`}>
+                    <span className="text-[10px] font-mono text-slate-400 flex-shrink-0">
                       {item.start_time}
                     </span>
                   </button>
@@ -934,7 +790,6 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
         </div>
       </div>
 
-<<<<<<< HEAD
       {/* ─────────────────────────────────────────────────────────────
           REAL-TIME EVENT TIMELINE (STEP 3)
           ───────────────────────────────────────────────────────────── */}
@@ -950,55 +805,54 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
       {/* ─────────────────────────────────────────────────────────────
           STAGE NOTE MODAL
           ───────────────────────────────────────────────────────────── */}
-=======
-      {/* STAGE NOTE MODAL */}
->>>>>>> 6a0311911a9896e8e5c343f162ceabd9357e93e2
       {isNoteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="bg-white border border-slate-200 w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
               <div className="flex items-center gap-2">
                 <StickyNote className="w-4 h-4 text-indigo-600" />
                 <h3 className="text-sm font-bold text-slate-900">Add Stage / Anchor Cue Note</h3>
               </div>
               <button
                 onClick={() => setIsNoteModalOpen(false)}
-                className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 bg-slate-100"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div>
-              <label className="soft-label">
-                Cue Note for "{currentActivity?.title}"
-              </label>
-              <textarea
-                rows={3}
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                placeholder="e.g. Ensure second handheld microphone is active for live Q&A; play walk-off music immediately after speech."
-                className="soft-input resize-none"
-                autoFocus
-              />
-            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Cue Note for "{currentActivity?.title}"
+                </label>
+                <textarea
+                  rows={3}
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="e.g. Ensure second handheld microphone is active for live Q&A; play walk-off music immediately after speech."
+                  className="w-full p-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none"
+                  autoFocus
+                />
+              </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setIsNoteModalOpen(false)}
-                className="btn-pill-secondary text-xs"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveNote}
-                disabled={savingNote || !noteText.trim()}
-                className="btn-pill-primary text-xs"
-              >
-                {savingNote ? 'Saving...' : 'Attach Stage Note'}
-              </button>
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsNoteModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveNote}
+                  disabled={savingNote || !noteText.trim()}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white font-bold text-xs shadow-sm transition"
+                >
+                  {savingNote ? 'Saving...' : 'Attach Stage Note'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
