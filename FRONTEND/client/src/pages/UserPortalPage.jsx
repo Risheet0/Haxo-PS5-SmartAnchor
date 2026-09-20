@@ -27,6 +27,8 @@ import {
 } from '../services/sasmEventsData';
 import EventCard from '../components/EventCard';
 import EventRegistrationModal from '../components/EventRegistrationModal';
+import { api } from '../services/api';
+import { getSocket } from '../services/socket';
 
 export default function UserPortalPage({
   selectedCity = 'Ahmedabad',
@@ -38,6 +40,7 @@ export default function UserPortalPage({
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'explore' | 'my-events' | 'saved' | 'profile'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [eventsList, setEventsList] = useState(SASM_MOCK_EVENTS);
 
   // Local storage state for registered & saved events
   const [registeredEventIds, setRegisteredEventIds] = useState(() => {
@@ -63,6 +66,42 @@ export default function UserPortalPage({
   const userName = currentUser?.name || 'Alex Johnson';
   const userEmail = currentUser?.email || 'alex.johnson@student.edu';
 
+  // Load live events from backend and listen to real-time launches
+  useEffect(() => {
+    const loadEvents = async () => {
+      try {
+        const data = await api.getAllEvents();
+        if (Array.isArray(data) && data.length > 0) {
+          setEventsList(data);
+        }
+      } catch (err) {
+        console.warn('Failed to load events from backend:', err);
+      }
+    };
+    loadEvents();
+
+    const socket = getSocket();
+    const handleNewEvent = (newEvent) => {
+      setEventsList((prev) => {
+        const exists = prev.some((e) => String(e.id) === String(newEvent.id));
+        if (exists) {
+          return prev.map((e) => (String(e.id) === String(newEvent.id) ? newEvent : e));
+        }
+        return [newEvent, ...prev];
+      });
+    };
+
+    socket.on('new_event_launched', handleNewEvent);
+    socket.on('event_created', handleNewEvent);
+    socket.on('event_updated', handleNewEvent);
+
+    return () => {
+      socket.off('new_event_launched', handleNewEvent);
+      socket.off('event_created', handleNewEvent);
+      socket.off('event_updated', handleNewEvent);
+    };
+  }, []);
+
   // Open registration modal
   const handleOpenRegistration = (event) => {
     setRegistrationModalEvent(event);
@@ -70,7 +109,7 @@ export default function UserPortalPage({
 
   // Toggle/cancel registration handler
   const handleToggleRegistration = (eventId) => {
-    const targetEvent = SASM_MOCK_EVENTS.find((e) => e.id === eventId);
+    const targetEvent = eventsList.find((e) => String(e.id) === String(eventId)) || SASM_MOCK_EVENTS.find((e) => String(e.id) === String(eventId));
     if (!registeredEventIds.includes(eventId)) {
       setRegistrationModalEvent(targetEvent);
     } else {
@@ -104,17 +143,22 @@ export default function UserPortalPage({
   };
 
   // Location priority sorted events
-  const sortedEvents = sortEventsByLocation(SASM_MOCK_EVENTS, selectedCity);
+  const sortedEvents = sortEventsByLocation(eventsList, selectedCity);
 
   // Filtered dataset based on search & category
   const filteredEvents = sortedEvents.filter((ev) => {
     const matchesCategory = selectedCategory === 'ALL' || ev.category === selectedCategory;
+    const title = ev.title || ev.name || '';
+    const inst = ev.institution || ev.venue || '';
+    const city = ev.city || '';
+    const org = ev.organizer || ev.organizer_name || '';
+
     const matchesSearch =
       !searchQuery.trim() ||
-      ev.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ev.institution.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ev.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ev.organizer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      inst.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      org.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (ev.tags && ev.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
 
     return matchesCategory && matchesSearch;
@@ -122,16 +166,16 @@ export default function UserPortalPage({
 
   // Split into priority city match vs other cities
   const priorityCityEvents = filteredEvents.filter(
-    (e) => e.city.toLowerCase().trim() === selectedCity.toLowerCase().trim()
+    (e) => (e.city || '').toLowerCase().trim() === selectedCity.toLowerCase().trim()
   );
   const otherCityEvents = filteredEvents.filter(
-    (e) => e.city.toLowerCase().trim() !== selectedCity.toLowerCase().trim()
+    (e) => (e.city || '').toLowerCase().trim() !== selectedCity.toLowerCase().trim()
   );
 
   // Registered events dataset
-  const registeredEvents = SASM_MOCK_EVENTS.filter((e) => registeredEventIds.includes(e.id));
+  const registeredEvents = eventsList.filter((e) => registeredEventIds.includes(e.id));
   // Saved events dataset
-  const savedEvents = SASM_MOCK_EVENTS.filter((e) => savedEventIds.includes(e.id));
+  const savedEvents = eventsList.filter((e) => savedEventIds.includes(e.id));
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8 font-sans">

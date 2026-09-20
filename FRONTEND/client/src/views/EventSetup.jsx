@@ -169,18 +169,25 @@ export default function EventSetup({
   const handleLaunchEvent = async () => {
     setLaunching(true);
     try {
-      await api.updateEvent({
-        ...eventData,
-        status: 'LIVE'
-      });
+      if (event && event.id) {
+        await api.updateEvent({
+          ...eventData,
+          status: 'LIVE'
+        });
+      } else {
+        await api.createEvent({
+          ...eventData,
+          status: 'LIVE'
+        });
+      }
       if (onRefresh) await onRefresh();
-      setSuccessMsg('Event successfully launched live!');
+      setSuccessMsg('Event successfully launched live! It is now visible to all attendees across the SASM platform.');
       
       setTimeout(() => {
         if (onNavigate) {
           onNavigate('dashboard');
         }
-      }, 1000);
+      }, 1200);
     } catch (err) {
       console.error(err);
     } finally {

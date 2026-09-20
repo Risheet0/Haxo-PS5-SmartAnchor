@@ -14,9 +14,13 @@ import {
 } from 'lucide-react';
 import { SASM_MOCK_EVENTS } from '../services/sasmEventsData';
 import EventRegistrationModal from '../components/EventRegistrationModal';
+import { api } from '../services/api';
 
 export default function EventDetailPage({ eventId = 'sasm-ev-1', onNavigate, currentUser = null }) {
   const [showRegModal, setShowRegModal] = useState(false);
+  const [eventData, setEventData] = useState(() => {
+    return SASM_MOCK_EVENTS.find((e) => String(e.id) === String(eventId)) || SASM_MOCK_EVENTS[0];
+  });
   const [isRegistered, setIsRegistered] = useState(() => {
     try {
       const saved = localStorage.getItem('sasm_registered_events');
@@ -27,7 +31,19 @@ export default function EventDetailPage({ eventId = 'sasm-ev-1', onNavigate, cur
     }
   });
 
-  const event = SASM_MOCK_EVENTS.find(e => e.id === eventId) || SASM_MOCK_EVENTS[0];
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const data = await api.getEventById(eventId);
+        if (data) setEventData(data);
+      } catch (err) {
+        console.warn('Failed to load event detail:', err);
+      }
+    };
+    fetchEvent();
+  }, [eventId]);
+
+  const event = eventData;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 font-sans">
