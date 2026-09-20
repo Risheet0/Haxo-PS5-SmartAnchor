@@ -483,6 +483,19 @@ export default function App() {
       return <HowItWorksPage onNavigate={handleNavigate} />;
     }
     if (currentPath === '/events') {
+      if (!currentUser) {
+        return (
+          <LoginPage
+            onNavigate={handleNavigate}
+            onLoginSuccess={handleLoginSuccess}
+          />
+        );
+      }
+      if (currentUser.role === 'manager') {
+        window.history.replaceState({}, '', '/manager');
+        setCurrentPath('/manager');
+        return null;
+      }
       return (
         <EventsPage
           selectedCity={selectedCity}

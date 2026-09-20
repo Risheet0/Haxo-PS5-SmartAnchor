@@ -10,6 +10,14 @@ export default function SignupPage({ onNavigate }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const userSession = {
+      id: 'usr-' + Date.now(),
+      name: name.trim() || (role === 'MANAGER' ? 'Event Manager' : 'Alex Johnson'),
+      email: email.trim() || (role === 'MANAGER' ? 'manager@sasm.org' : 'user@domain.com'),
+      role: role === 'MANAGER' ? 'manager' : 'user',
+      locationPreference: 'Ahmedabad'
+    };
+    localStorage.setItem('sasm_user', JSON.stringify(userSession));
     if (role === 'MANAGER') {
       onNavigate('/manager');
     } else {
@@ -18,15 +26,15 @@ export default function SignupPage({ onNavigate }) {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-16 font-sans">
-      <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6">
+    <div className="max-w-md mx-auto px-4 py-16 font-sans select-none">
+      <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-6">
         <div className="space-y-3 text-center">
           <SasmLogo size="lg" onClick={() => onNavigate('/')} />
           <h1 className="text-xl font-bold text-slate-950 uppercase tracking-tight pt-2">
             Create SASM Account
           </h1>
           <p className="text-xs text-slate-500">
-            Join the TechFest platform for Ahmedabad students and event conductors.
+            Join the universal event platform for attendees and event conductors.
           </p>
         </div>
 
@@ -39,7 +47,7 @@ export default function SignupPage({ onNavigate }) {
               role === 'USER' ? 'bg-slate-950 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Student / User
+            Attendee / User
           </button>
           <button
             type="button"
@@ -63,7 +71,7 @@ export default function SignupPage({ onNavigate }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Aarav Sharma"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 font-sans"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 font-sans text-xs sm:text-sm"
               />
             </div>
           </div>
@@ -77,8 +85,8 @@ export default function SignupPage({ onNavigate }) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="student@college.edu.in"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 font-sans"
+                placeholder="user@domain.com"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 font-sans text-xs sm:text-sm"
               />
             </div>
           </div>
@@ -92,8 +100,8 @@ export default function SignupPage({ onNavigate }) {
                 required
                 value={institution}
                 onChange={(e) => setInstitution(e.target.value)}
-                placeholder="GTU / Nirma / Adani / GDG Ahmedabad"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 font-sans"
+                placeholder="University / Enterprise / Community"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 font-sans text-xs sm:text-sm"
               />
             </div>
           </div>
@@ -102,7 +110,7 @@ export default function SignupPage({ onNavigate }) {
             type="submit"
             className="w-full py-3 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold text-xs transition active:scale-95 shadow-sm flex items-center justify-center gap-2"
           >
-            <span>{role === 'MANAGER' ? 'Access Manager Console' : 'Create Student Account'}</span>
+            <span>{role === 'MANAGER' ? 'Access Manager Console' : 'Create User Account'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
