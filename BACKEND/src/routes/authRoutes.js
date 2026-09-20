@@ -1,13 +1,10 @@
 import express from 'express';
 import { checkCooldown, createOtpRecord, verifyOtpRecord } from '../services/otpService.js';
-import { sendOtpEmail } from '../services/emailService.js';
+import { sendVerificationOtp, sendLoginOtp } from '../services/emailService.js';
 import { dbGet, dbRun } from '../config/db.js';
 
 const router = express.Router();
 
-/**
- * Helper to validate email format
- */
 function isValidEmail(email) {
   if (!email || typeof email !== 'string') return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -15,7 +12,7 @@ function isValidEmail(email) {
 
 /**
  * POST /api/auth/send-otp
- * Request backend to generate 6-digit OTP and send email via Brevo
+ * Signup Email Verification OTP Dispatch
  */
 router.post('/send-otp', async (req, res, next) => {
   try {
@@ -30,7 +27,7 @@ router.post('/send-otp', async (req, res, next) => {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // 1. Resend Protection: Check 60-Second Cooldown
+    // 1. Resend Protection: 60-Second Cooldown
     const cooldown = await checkCooldown(normalizedEmail);
     if (cooldown.onCooldown) {
       return res.status(429).json({
@@ -39,13 +36,12 @@ router.post('/send-otp', async (req, res, next) => {
       });
     }
 
-    // 2. Generate cryptographically secure OTP & store hash
+    // 2. Generate 6-digit numeric OTP & store SHA-256 hash in DB
     const { otp } = await createOtpRecord(normalizedEmail);
 
-    // 3. Dispatch Email via Brevo API
-    await sendOtpEmail(normalizedEmail, otp);
+    // 3. Send Verification Email via SMTP
+    await sendVerificationOtp(normalizedEmail, otp);
 
-    // 4. Return success response (NEVER return the actual OTP in JSON response!)
     return res.status(200).json({
       success: true,
       message: 'OTP sent successfully'
@@ -60,8 +56,53 @@ router.post('/send-otp', async (req, res, next) => {
 });
 
 /**
+ * POST /api/auth/send-login-otp
+ * Login Verification OTP Dispatch
+ */
+router.post('/send-login-otp', async (req, res, next) => {
+  try {
+    const { email, role } = req.body || {};
+
+    if (!email || !isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid email address is required.'
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // 1. Resend Protection: 60-Second Cooldown
+    const cooldown = await checkCooldown(normalizedEmail);
+    if (cooldown.onCooldown) {
+      return res.status(429).json({
+        success: false,
+        message: `Please wait ${cooldown.secondsRemaining} seconds before requesting another verification code.`
+      });
+    }
+
+    // 2. Generate 6-digit numeric OTP & store SHA-256 hash in DB
+    const { otp } = await createOtpRecord(normalizedEmail);
+
+    // 3. Send Login Verification Email via SMTP
+    await sendLoginOtp(normalizedEmail, otp);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Login verification code sent to your email address.'
+    });
+  } catch (err) {
+    console.error('[Auth API Error] send-login-otp failed:', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Unable to send login verification email. Please try again later.'
+    });
+  }
+});
+
+/**
  * POST /api/auth/verify-otp
- * Verify 6-digit OTP entered by user
+ * Verify 6-digit OTP entered by user (Signup or Login)
  */
 router.post('/verify-otp', async (req, res, next) => {
   try {
@@ -124,7 +165,6 @@ router.post('/complete-signup', async (req, res, next) => {
     const userRole = role === 'manager' ? 'manager' : 'user';
     const createdAt = new Date().toISOString();
 
-    // Check if user already exists
     const existing = await dbGet(`SELECT id FROM users WHERE LOWER(email) = ?`, [normalizedEmail]);
 
     let userId;

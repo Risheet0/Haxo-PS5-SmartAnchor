@@ -1,30 +1,60 @@
 import React, { useState } from 'react';
 import SasmLogo from '../components/SasmLogo';
-import { ArrowRight, Lock, Mail, User, Shield, CheckCircle2 } from 'lucide-react';
+import OtpVerification from '../components/auth/OtpVerification';
+import { sendLoginOtp } from '../services/authService';
+import { ArrowRight, Lock, Mail, User, Shield, RefreshCw } from 'lucide-react';
 
 export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const [selectedRole, setSelectedRole] = useState(null); // null | 'user' | 'manager'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  
+  // Login Steps: 'CREDENTIALS' | 'OTP_VERIFICATION'
+  const [step, setStep] = useState('CREDENTIALS');
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSelectRole = (role) => {
     setSelectedRole(role);
     setEmail('');
     setPassword('');
     setName('');
+    setErrorMessage('');
   };
 
-  const handleSubmit = (e) => {
+  const handleCredentialsSubmit = async (e) => {
     e.preventDefault();
     if (!selectedRole) return;
+    if (!email || !email.trim()) {
+      setErrorMessage('Please enter your registered email address.');
+      return;
+    }
 
+    setLoading(true);
+    setErrorMessage('');
+
+    try {
+      // Dispatch real SMTP login OTP from backend
+      await sendLoginOtp(email.trim(), selectedRole);
+      // Advance to OTP Verification Step
+      setStep('OTP_VERIFICATION');
+    } catch (err) {
+      setErrorMessage(err.message || 'Failed to send login verification code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoginOtpVerified = (verifiedData) => {
     const userSession = {
       id: 'usr-' + Date.now(),
-      name: name.trim() || (selectedRole === 'manager' ? 'Event Organizer' : 'Alex Johnson'),
-      email: email.trim() || (selectedRole === 'manager' ? 'manager@sasm.org' : 'alex.johnson@student.edu'),
+      name: name.trim() || (selectedRole === 'manager' ? 'Event Manager' : 'Alex Johnson'),
+      email: email.trim(),
       role: selectedRole, // 'user' or 'manager'
-      locationPreference: 'Ahmedabad'
+      locationPreference: 'Ahmedabad',
+      email_verified: true,
+      logged_in_at: new Date().toISOString()
     };
 
     localStorage.setItem('sasm_user', JSON.stringify(userSession));
@@ -40,8 +70,25 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
     }
   };
 
+  // Render OTP Verification Step for Login
+  if (step === 'OTP_VERIFICATION') {
+    return (
+      <OtpVerification
+        signupData={{
+          name: name.trim() || (selectedRole === 'manager' ? 'Event Manager' : 'User'),
+          email: email.trim(),
+          role: selectedRole
+        }}
+        onVerified={handleLoginOtpVerified}
+        onChangeEmail={() => setStep('CREDENTIALS')}
+        onCancel={() => setStep('CREDENTIALS')}
+      />
+    );
+  }
+
+  // Render Step 1: Login Role & Credentials Form
   return (
-    <div className="max-w-xl mx-auto px-4 py-12 sm:py-16 font-sans select-none">
+    <div className="max-w-xl mx-auto px-4 py-12 sm:py-16 font-sans select-none animate-fade-in">
       <div className="p-8 sm:p-10 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-8">
         
         {/* Brand Header */}
@@ -54,6 +101,13 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             Universal event discovery &amp; management platform portal.
           </p>
         </div>
+
+        {/* Global Error Banner */}
+        {errorMessage && (
+          <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 font-mono text-xs">
+            {errorMessage}
+          </div>
+        )}
 
         {/* Step 1: Who Are You Role Selection */}
         {!selectedRole ? (
@@ -118,7 +172,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             </div>
           </div>
         ) : (
-          /* Step 2: Login Form for Selected Role */
+          /* Step 2: Login Credentials Form */
           <div className="space-y-6 pt-2 font-mono text-xs">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -142,7 +196,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleCredentialsSubmit} className="space-y-4">
               <div>
                 <label className="block text-slate-700 font-bold uppercase mb-1">Full Name</label>
                 <div className="relative">
@@ -158,7 +212,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold uppercase mb-1">Email Address</label>
+                <label className="block text-slate-700 font-bold uppercase mb-1">Email Address <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <input
@@ -173,7 +227,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold uppercase mb-1">Password</label>
+                <label className="block text-slate-700 font-bold uppercase mb-1">Password <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <input
@@ -189,10 +243,20 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold text-xs transition active:scale-95 shadow-xs flex items-center justify-center gap-2"
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-mono font-bold text-xs uppercase tracking-wider transition active:scale-95 shadow-xs flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>{selectedRole === 'manager' ? 'Open Manager Console' : 'Open User Dashboard'}</span>
-                <ArrowRight className="w-4 h-4" />
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Sending Code...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Continue to Login Verification</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </form>
           </div>

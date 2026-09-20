@@ -1,6 +1,6 @@
 /**
  * SASM Authentication Service
- * Connects Frontend Signup & Verification UI to Backend API (/api/auth) & Brevo Email Service
+ * Connects Frontend Signup & Login OTP UI to Real Backend SMTP API (/api/auth)
  */
 
 const API_BASE = '/api/auth';
@@ -59,7 +59,7 @@ export function validateSignupData({ name, email, password, confirmPassword, rol
 }
 
 /**
- * Request Backend to Generate 6-Digit OTP & Dispatch Email via Brevo
+ * Request Backend to Generate Real 6-Digit OTP & Dispatch Email via SMTP for Signup
  */
 export async function sendOtp(email) {
   try {
@@ -79,20 +79,39 @@ export async function sendOtp(email) {
       message: data.message || `Verification code sent to ${maskEmail(email)}`
     };
   } catch (err) {
-    // If backend endpoint is offline, provide graceful dev fallback
-    console.warn('[authService] Network error or server offline. Using local fallback:', err.message);
-    if (err.message.includes('Please wait')) {
-      throw err;
-    }
-    return {
-      success: true,
-      message: `Verification code dispatched to ${maskEmail(email)}`
-    };
+    console.error('[authService] sendOtp error:', err.message);
+    throw err;
   }
 }
 
 /**
- * Verify Entered 6-Digit OTP against Backend Cryptographic SHA-256 Hash
+ * Request Backend to Generate Real 6-Digit OTP & Dispatch Email via SMTP for Login
+ */
+export async function sendLoginOtp(email, role) {
+  try {
+    const res = await fetch(`${API_BASE}/send-login-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), role })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || 'Failed to send login verification code.');
+    }
+
+    return {
+      success: true,
+      message: data.message || `Login verification code sent to ${maskEmail(email)}`
+    };
+  } catch (err) {
+    console.error('[authService] sendLoginOtp error:', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Verify Entered 6-Digit OTP strictly against Backend Cryptographic SHA-256 Hash
  */
 export async function verifyOtp(email, otp) {
   try {
@@ -118,18 +137,16 @@ export async function verifyOtp(email, otp) {
       message: data.message || 'Email address successfully verified.'
     };
   } catch (err) {
-    // Fallback for offline dev mode
-    console.warn('[authService] Backend offline during verifyOtp, evaluating client check:', err.message);
-    const cleanOtp = String(otp).trim();
-    if (cleanOtp === '123456' || (cleanOtp.length === 6 && /^\d+$/.test(cleanOtp))) {
-      return { success: true, message: 'Email address successfully verified.' };
-    }
-    return { success: false, message: 'Invalid verification code. Please try again.' };
+    console.error('[authService] verifyOtp network error:', err.message);
+    return {
+      success: false,
+      message: 'Network error communicating with server. Please try again.'
+    };
   }
 }
 
 /**
- * Resend OTP (Alias to sendOtp with backend cooldown protection)
+ * Resend OTP with backend 60-second cooldown protection
  */
 export async function resendOtp(email) {
   return sendOtp(email);
@@ -156,7 +173,7 @@ export async function completeSignup(userData) {
       return { success: true, user: data.user };
     }
   } catch (err) {
-    console.warn('[authService] Backend offline during completeSignup, creating client session:', err.message);
+    console.warn('[authService] Backend offline during completeSignup:', err.message);
   }
 
   // Fallback session object
