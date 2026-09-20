@@ -178,18 +178,16 @@ export default function App() {
 [Stage Cue: Acknowledge the attendees with an open hand gesture]
 
 We are currently in session with:
-**${currentLive?.title || 'Keynote Session'}**${
-          currentLive?.speaker_name
-            ? ` by **${currentLive.speaker_name}**`
-            : ''
+**${currentLive?.title || 'Keynote Session'}**${currentLive?.speaker_name
+          ? ` by **${currentLive.speaker_name}**`
+          : ''
         }.
 
 [Stage Cue: Maintain an inspiring, articulate tone]
 
-${
-  currentLive?.notes ||
-  'Please pay close attention to the instructions and technical takeaways.'
-}"`
+${currentLive?.notes ||
+        'Please pay close attention to the instructions and technical takeaways.'
+        }"`
       );
     }
 
@@ -277,7 +275,7 @@ ${
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-['Plus_Jakarta_Sans',sans-serif] selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="min-h-screen bg-[#E9EFF6] text-slate-900 flex flex-col font-['Plus_Jakarta_Sans',sans-serif] selection:bg-indigo-100 selection:text-indigo-900">
       {/* Top Navbar */}
       <Navbar
         event={event}
@@ -321,7 +319,7 @@ ${
         />
 
         {/* Primary Content View Area */}
-        <main className="flex-1 overflow-y-auto bg-[#F8FAFC]">
+        <main className="flex-1 overflow-y-auto bg-[#E9EFF6]">
           {currentTab === 'live' && (
             <LiveControlView
               event={event}

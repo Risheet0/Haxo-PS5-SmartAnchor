@@ -12,8 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Mic2,
-  Tv
+  Mic2
 } from 'lucide-react';
 
 export default function Sidebar({
@@ -103,18 +102,18 @@ export default function Sidebar({
   );
 
   const sidebarContent = (
-    <div className="flex flex-col h-full justify-between select-none">
+    <div className="flex flex-col h-full justify-between select-none p-4">
       {/* Top Header / Progress Widget */}
-      <div className="p-3 space-y-4">
+      <div className="space-y-4">
         {/* Mobile close button */}
-        <div className="flex items-center justify-between lg:hidden pb-2 border-b border-slate-200">
-          <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
+        <div className="flex items-center justify-between lg:hidden pb-2 border-b border-slate-100">
+          <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
             <Mic2 className="w-4 h-4 text-indigo-600" />
-            <span>Navigation Menu</span>
+            <span>Navigation</span>
           </div>
           <button
             onClick={onCloseMobile}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 bg-slate-100"
+            className="p-2 rounded-full text-slate-500 hover:text-slate-800 bg-slate-100"
           >
             <X className="w-4 h-4" />
           </button>
@@ -122,43 +121,43 @@ export default function Sidebar({
 
         {/* Event Flow Progress Meter (Expanded only) */}
         {!collapsed && (
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5 text-[10px]">
-                <Mic2 className="w-3 h-3 text-indigo-600" />
+          <div className="p-4 rounded-2xl bg-slate-50/90 border border-slate-100 space-y-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-600 flex items-center gap-1.5 text-xs">
+                <Mic2 className="w-3.5 h-3.5 text-indigo-600" />
                 Stage Progress
               </span>
-              <span className="text-indigo-600 font-mono font-bold text-xs">
+              <span className="text-slate-900 font-mono font-bold text-xs">
                 {progress}%
               </span>
             </div>
 
-            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mb-2.5">
+            <div className="w-full bg-slate-200/80 h-2 rounded-full overflow-hidden p-0.5">
               <div
-                className="bg-indigo-600 h-full rounded-full transition-all duration-500"
+                className="bg-slate-900 h-full rounded-full transition-all duration-500"
                 style={{ width: `${progress}%` }}
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-1 text-center font-mono text-[10px]">
-              <div className="p-1 rounded bg-white border border-slate-200">
-                <span className="text-slate-500 block text-[8px] font-bold">DONE</span>
-                <span className="font-bold text-slate-800">{agendaStats.completed}</span>
+            <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
+              <div className="p-1.5 rounded-xl bg-white border border-slate-100 shadow-sm">
+                <span className="text-slate-400 block text-[9px] font-semibold">DONE</span>
+                <span className="font-bold text-slate-800 text-xs">{agendaStats.completed}</span>
               </div>
-              <div className="p-1 rounded bg-red-50 border border-red-200">
-                <span className="text-red-600 block text-[8px] font-bold">LIVE</span>
-                <span className="font-bold text-red-700">{agendaStats.live}</span>
+              <div className="p-1.5 rounded-xl bg-red-50 border border-red-100">
+                <span className="text-red-500 block text-[9px] font-bold">LIVE</span>
+                <span className="font-bold text-red-600 text-xs">{agendaStats.live}</span>
               </div>
-              <div className="p-1 rounded bg-white border border-slate-200">
-                <span className="text-slate-500 block text-[8px] font-bold">QUEUED</span>
-                <span className="font-bold text-slate-700">{agendaStats.upcoming}</span>
+              <div className="p-1.5 rounded-xl bg-white border border-slate-100 shadow-sm">
+                <span className="text-slate-400 block text-[9px] font-semibold">NEXT</span>
+                <span className="font-bold text-slate-700 text-xs">{agendaStats.upcoming}</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Navigation Items */}
-        <nav className="space-y-1">
+        <nav className="space-y-1.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
@@ -172,53 +171,50 @@ export default function Sidebar({
                   } else {
                     onSelectTab(item.id);
                   }
-                  if (onCloseMobile) onCloseMobile();
                 }}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-semibold transition-all duration-200 group relative ${isActive
+                    ? 'bg-slate-900 text-white shadow-md shadow-slate-950/15'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                  }`}
                 title={collapsed ? `${item.label} - ${item.desc}` : undefined}
-                className={`w-full flex items-center ${
-                  collapsed ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
-                } rounded-lg text-xs font-semibold transition-all group relative ${
-                  isActive
-                    ? 'bg-indigo-50 text-indigo-900 border border-indigo-200 shadow-sm font-bold'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
-                }`}
               >
-                {/* Active left indicator bar */}
-                {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-indigo-600 rounded-r" />
-                )}
-
-                <div className="flex items-center gap-2.5">
-                  <Icon
-                    className={`w-4 h-4 flex-shrink-0 ${
-                      isActive
-                        ? 'text-indigo-600'
-                        : item.highlight
-                        ? 'text-indigo-600 group-hover:text-indigo-700'
-                        : 'text-slate-500 group-hover:text-slate-700'
+                <div
+                  className={`w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 transition ${isActive
+                      ? 'text-white'
+                      : item.highlight
+                        ? 'text-indigo-600 bg-indigo-50 group-hover:bg-indigo-100'
+                        : 'text-slate-500 group-hover:text-slate-900'
                     }`}
-                  />
-                  {!collapsed && <span className="tracking-tight">{item.label}</span>}
+                >
+                  <Icon className="w-4 h-4" />
                 </div>
 
                 {!collapsed && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex-1 flex items-center justify-between text-left truncate">
+                    <span className="truncate">{item.label}</span>
+
+                    {/* Badge */}
                     {item.badge && (
                       <span
-                        className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                          item.badgeColor === 'live'
-                            ? 'bg-red-50 text-red-600 border border-red-200 animate-pulse'
-                            : item.badgeColor === 'warning'
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                            : 'bg-slate-100 text-slate-600 border border-slate-200'
-                        }`}
+                        className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${isActive
+                            ? 'bg-white/20 text-white'
+                            : item.badgeColor === 'live'
+                              ? 'bg-red-50 text-red-600 border border-red-200'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}
                       >
                         {item.badge}
                       </span>
                     )}
 
+                    {/* Count */}
                     {item.count !== undefined && !item.badge && (
-                      <span className="text-[10px] font-mono text-slate-500 px-1.5 py-0.2 rounded bg-white border border-slate-200">
+                      <span
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${isActive
+                            ? 'bg-white/20 text-white'
+                            : 'bg-slate-100 text-slate-500'
+                          }`}
+                      >
                         {item.count}
                       </span>
                     )}
@@ -230,25 +226,21 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* Bottom Footer & Collapse Toggle */}
-      <div className="p-3 border-t border-slate-200 bg-slate-50">
-        {!collapsed && (
-          <div className="mb-3 p-2.5 rounded-lg bg-white border border-slate-200 text-[11px] text-slate-600 leading-snug">
-            <span className="font-bold text-indigo-700 flex items-center gap-1 mb-0.5">
-              <Sparkles className="w-3 h-3" />
-              Stage Operator Mode
-            </span>
-            <span>Real-time socket synchronized with auditorium console.</span>
-          </div>
-        )}
-
+      {/* Bottom Collapse Toggle (Desktop only) */}
+      <div className="hidden lg:block pt-3 border-t border-slate-100">
         <button
           onClick={onToggleCollapse}
-          className="hidden lg:flex w-full items-center justify-center gap-2 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent hover:border-slate-200 text-xs font-semibold transition"
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 text-xs font-semibold transition"
+          title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >
-          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          {!collapsed && <span className="text-[11px]">Collapse View</span>}
+          {collapsed ? (
+            <ChevronRight className="w-4 h-4" />
+          ) : (
+            <>
+              <ChevronLeft className="w-4 h-4" />
+              <span>Collapse Sidebar</span>
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -256,27 +248,29 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Desktop Sidebar */}
+      {/* Desktop / Tablet Sidebar */}
       <aside
-        className={`hidden lg:flex flex-col flex-shrink-0 bg-white border-r border-[#E2E8F0] transition-all duration-200 ${
-          collapsed ? 'w-16' : 'w-60'
-        } min-h-[calc(100vh-4rem)]`}
+        className={`hidden lg:flex flex-col bg-white border border-slate-200/80 rounded-3xl ml-4 mb-4 shadow-sm transition-all duration-300 ease-in-out z-30 ${collapsed ? 'w-20' : 'w-64'
+          }`}
       >
         {sidebarContent}
       </aside>
 
-      {/* Mobile Drawer Overlay */}
+      {/* Mobile Drawer Backdrop */}
       {isOpenMobile && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={onCloseMobile}
-          />
-          <div className="relative w-64 bg-white border-r border-[#E2E8F0] h-full z-50 flex flex-col shadow-xl">
-            {sidebarContent}
-          </div>
-        </div>
+        <div
+          onClick={onCloseMobile}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 lg:hidden transition-opacity"
+        />
       )}
+
+      {/* Mobile Drawer Menu */}
+      <div
+        className={`fixed inset-y-0 left-0 w-72 bg-white z-50 transform transition-transform duration-300 ease-out shadow-2xl lg:hidden ${isOpenMobile ? 'translate-x-0' : '-translate-x-full'
+          }`}
+      >
+        {sidebarContent}
+      </div>
     </>
   );
 }

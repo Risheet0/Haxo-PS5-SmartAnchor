@@ -9,17 +9,17 @@ export default function ErrorState({
 }) {
   return (
     <div
-      className={`p-6 sm:p-10 rounded-2xl bg-[#240C10] border-2 border-red-500/60 text-center flex flex-col items-center justify-center space-y-3 shadow-panel select-none ${className}`}
+      className={`p-6 sm:p-10 rounded-3xl bg-red-50/80 border border-red-200 text-center flex flex-col items-center justify-center space-y-4 select-none shadow-sm ${className}`}
     >
-      <div className="w-12 h-12 rounded-2xl bg-red-600/20 border border-red-500/50 flex items-center justify-center text-red-400 mb-1">
-        <AlertCircle className="w-6 h-6" />
+      <div className="w-14 h-14 rounded-2xl bg-red-100 border border-red-200 flex items-center justify-center text-red-600 shadow-sm">
+        <AlertCircle className="w-7 h-7" />
       </div>
 
-      <div className="space-y-1 max-w-md">
-        <h3 className="text-base font-bold text-white tracking-tight">
+      <div className="space-y-1.5 max-w-md">
+        <h3 className="text-base font-bold text-red-950 tracking-tight">
           {title}
         </h3>
-        <p className="text-xs text-red-200/80 leading-relaxed">
+        <p className="text-sm text-red-700/80 leading-relaxed font-normal">
           {message}
         </p>
       </div>
@@ -27,10 +27,10 @@ export default function ErrorState({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-2 flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-md transition active:scale-95"
+          className="btn-pill-danger text-xs mt-2"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          <span>Retry Operation</span>
+          <span>Retry Connection</span>
         </button>
       )}
     </div>

@@ -6,20 +6,10 @@ import {
   RotateCcw,
   Tv,
   Volume2,
-  Clock,
-  Mic2,
   Sliders,
-  Send,
-  AlertCircle,
   Bookmark,
   BookmarkCheck,
-  Edit3,
-  Layers,
-  FileText,
-  User,
-  Radio,
-  Share2,
-  ListOrdered
+  Edit3
 } from 'lucide-react';
 import { api } from '../services/api';
 import { parseStageScript } from '../utils/formatters';
@@ -27,19 +17,16 @@ import { useToast } from '../components/ui/ToastContext';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function AIScriptGenerator({
-  event,
   speakers = [],
   agenda = [],
   initialConfig = null,
   onOpenTeleprompter
 }) {
   const toast = useToast();
-  // Script Config State
   const [scriptType, setScriptType] = useState(initialConfig?.scriptType || 'Speaker Introduction');
   const [speakerId, setSpeakerId] = useState(initialConfig?.speakerId || (speakers[0]?.id || ''));
   const [customSpeakerName, setCustomSpeakerName] = useState('');
   const [topic, setTopic] = useState('');
-  const [prevActivityId, setPrevActivityId] = useState('');
   const [currentActivityId, setCurrentActivityId] = useState(initialConfig?.currentActivityId || (agenda[1]?.id || ''));
   const [nextActivityId, setNextActivityId] = useState(initialConfig?.nextActivityId || (agenda[2]?.id || ''));
   const [audience, setAudience] = useState('Tech Community & Developers');
@@ -56,37 +43,30 @@ export default function AIScriptGenerator({
   const [metadata, setMetadata] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // Saved Script Archive
-  const [savedScripts, setSavedScripts] = useState([]);
-
-  // Tone Options
   const toneOptions = [
-    { id: 'Professional', label: 'Professional', desc: 'Balanced, authoritative conference cadence' },
-    { id: 'Formal', label: 'Formal', desc: 'Dignified protocol, ceremonial stage tone' },
-    { id: 'Friendly', label: 'Friendly', desc: 'Warm, conversational community connection' },
-    { id: 'Energetic', label: 'Energetic', desc: 'High enthusiasm, hackathon/keynote kickoff' },
-    { id: 'Technical', label: 'Technical', desc: 'Precise terminology, domain-focused' },
-    { id: 'Short', label: 'Short', desc: 'Concise, rapid transition with minimal filler' }
+    { id: 'Professional', label: 'Professional' },
+    { id: 'Formal', label: 'Formal' },
+    { id: 'Friendly', label: 'Friendly' },
+    { id: 'Energetic', label: 'Energetic' },
+    { id: 'Technical', label: 'Technical' },
+    { id: 'Short', label: 'Short' }
   ];
 
-  // Script Types
   const scriptTypes = [
-    { id: 'Opening Script', label: 'Opening Script', desc: 'Event inauguration, welcome remarks & stage introduction' },
-    { id: 'Speaker Introduction', label: 'Speaker Introduction', desc: 'Dignitary bio, session topic, and stage handover' },
-    { id: 'Transition Script', label: 'Transition Script', desc: 'Bridge between sessions with recap and stage cue' },
-    { id: 'Closing Script', label: 'Closing Script', desc: 'Valedictory remarks, thank yous & event wrap-up' },
-    { id: 'Delay Announcement', label: 'Delay Announcement', desc: 'Diplomatic public notice regarding schedule adjustment' },
-    { id: 'Emergency Announcement', label: 'Emergency Announcement', desc: 'Urgent stage notice transformed from organizer memo' }
+    { id: 'Opening Script', label: 'Opening Script' },
+    { id: 'Speaker Introduction', label: 'Speaker Intro' },
+    { id: 'Transition Script', label: 'Transition' },
+    { id: 'Closing Script', label: 'Closing Script' },
+    { id: 'Delay Announcement', label: 'Delay Notice' },
+    { id: 'Emergency Announcement', label: 'Emergency Notice' }
   ];
 
-  // Length Options
   const lengthOptions = [
-    { id: 'Short', label: 'Short', desc: '~1 min (100-130 words)' },
-    { id: 'Standard', label: 'Standard', desc: '~2-3 min (220-280 words)' },
-    { id: 'Detailed', label: 'Detailed', desc: '~4-5 min (380-450 words)' }
+    { id: 'Short', label: 'Short (~1m)' },
+    { id: 'Standard', label: 'Standard (~2-3m)' },
+    { id: 'Detailed', label: 'Detailed (~4-5m)' }
   ];
 
-  // Audiences
   const audienceOptions = [
     'Tech Community & Developers',
     'University Students & Researchers',
@@ -94,7 +74,6 @@ export default function AIScriptGenerator({
     'General Public & Attendees'
   ];
 
-  // Sync initialConfig changes
   useEffect(() => {
     if (initialConfig) {
       if (initialConfig.scriptType) setScriptType(initialConfig.scriptType);
@@ -104,7 +83,6 @@ export default function AIScriptGenerator({
     }
   }, [initialConfig]);
 
-  // Audio Speech Rehearsal handler
   const handleToggleSpeech = () => {
     if (!('speechSynthesis' in window)) {
       alert('Speech synthesis is not supported in this browser.');
@@ -145,7 +123,6 @@ export default function AIScriptGenerator({
 
     const selectedSpeaker = speakers.find((s) => s.id === Number(speakerId));
     const activeCurrent = agenda.find((a) => a.id === Number(currentActivityId));
-    const activeNext = agenda.find((a) => a.id === Number(nextActivityId));
 
     try {
       const res = await api.generateScript({
@@ -171,7 +148,6 @@ export default function AIScriptGenerator({
       toast.ai('Stage script generated successfully.');
     } catch (err) {
       console.error('AI script generation error:', err);
-      // Construct fallback prompt
       const fallbackSpeaker = selectedSpeaker?.name || customSpeakerName || 'Special Guest';
       const fallbackTopic = topic || activeCurrent?.title || 'Keynote Session';
 
@@ -202,7 +178,6 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
     }
   };
 
-  // Generate default script on first mount
   useEffect(() => {
     if (!generatedScript) {
       handleGenerate();
@@ -218,14 +193,6 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
 
   const handleSaveToArchive = () => {
     if (!generatedScript) return;
-    const newEntry = {
-      id: Date.now(),
-      scriptType,
-      tone,
-      script: generatedScript,
-      timestamp: new Date().toLocaleTimeString()
-    };
-    setSavedScripts((prev) => [newEntry, ...prev.slice(0, 9)]);
     setSaved(true);
     toast.success('Script saved to event session archive.');
     setTimeout(() => setSaved(false), 2000);
@@ -235,30 +202,30 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
   const parsedScript = parseStageScript(generatedScript);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 animate-fade-in max-w-7xl mx-auto select-none">
+    <div className="p-4 sm:p-8 space-y-6 animate-fade-in max-w-7xl mx-auto select-none">
       
       {/* ─────────────────────────────────────────────────────────────
           1. HEADER & STATUS BAR
           ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 soft-card">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
-              <Sparkles className="w-4 h-4" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shadow-sm">
+              <Sparkles className="w-5 h-5" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
               AI Stage Script Studio
             </h2>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Produce structured, pacing-calibrated anchor scripts with physical cue guidance for teleprompter deployment
           </p>
         </div>
 
         {metadata && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-700">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="font-medium">{metadata.provider}</span>
+            <span>{metadata.provider}</span>
             <span className="text-slate-300">•</span>
             <span>{metadata.wordCount} words (~{metadata.estimatedMinutes}m)</span>
           </div>
@@ -270,31 +237,29 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
           ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-        {/* ═════════════════════════════════════════════════════════════
-            LEFT COLUMN (5 Cols): CLEAN GENERATION FORM
-            ═════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 space-y-4 shadow-sm">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+        {/* LEFT COLUMN (5 Cols): CLEAN GENERATION FORM */}
+        <div className="lg:col-span-5 space-y-6">
+          <div className="p-6 soft-card space-y-5">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
               <Sliders className="w-4 h-4 text-indigo-600" />
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+              <h3 className="text-sm font-bold text-slate-800">
                 Script Configuration
               </h3>
             </div>
 
             {/* 1. Script Type Selector */}
             <div>
-              <label className="stage-label">1. Script Type</label>
+              <label className="soft-label">1. Script Type</label>
               <div className="grid grid-cols-2 gap-2">
                 {scriptTypes.map((st) => (
                   <button
                     key={st.id}
                     type="button"
                     onClick={() => setScriptType(st.id)}
-                    className={`p-2.5 rounded-xl border text-left text-xs transition ${
+                    className={`p-3 rounded-2xl border text-left text-xs transition ${
                       scriptType === st.id
-                        ? 'bg-indigo-50 border-indigo-300 text-indigo-900 font-bold shadow-xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
+                        ? 'bg-slate-900 border-slate-900 text-white font-bold shadow-sm'
+                        : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     <div className="truncate">{st.label}</div>
@@ -303,15 +268,15 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
               </div>
             </div>
 
-            {/* 2. Speaker & Topic Assignment */}
+            {/* 2. Speaker Assignment */}
             {(scriptType === 'Speaker Introduction' || scriptType === 'Transition Script') && (
-              <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="space-y-3 pt-3 border-t border-slate-100">
                 <div>
-                  <label className="stage-label">2. Speaker / Dignitary</label>
+                  <label className="soft-label">2. Assigned Speaker</label>
                   <select
                     value={speakerId}
                     onChange={(e) => setSpeakerId(e.target.value)}
-                    className="stage-select"
+                    className="soft-select text-xs"
                   >
                     <option value="">-- Custom / No Specific Speaker --</option>
                     {speakers.map((s) => (
@@ -324,13 +289,13 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
 
                 {!speakerId && (
                   <div>
-                    <label className="stage-label">Custom Speaker Name</label>
+                    <label className="soft-label">Custom Speaker Name</label>
                     <input
                       type="text"
                       value={customSpeakerName}
                       onChange={(e) => setCustomSpeakerName(e.target.value)}
                       placeholder="e.g. Dr. A. Sharma"
-                      className="stage-input"
+                      className="soft-input text-xs"
                     />
                   </div>
                 )}
@@ -338,13 +303,13 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
             )}
 
             {/* 3. Session Timeline Routing */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100">
               <div>
-                <label className="stage-label">Current Session</label>
+                <label className="soft-label">Current Session</label>
                 <select
                   value={currentActivityId}
                   onChange={(e) => setCurrentActivityId(e.target.value)}
-                  className="stage-select"
+                  className="soft-select text-xs"
                 >
                   {agenda.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -355,11 +320,11 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
               </div>
 
               <div>
-                <label className="stage-label">Next Session</label>
+                <label className="soft-label">Next Session</label>
                 <select
                   value={nextActivityId}
                   onChange={(e) => setNextActivityId(e.target.value)}
-                  className="stage-select"
+                  className="soft-select text-xs"
                 >
                   <option value="">-- Final Session --</option>
                   {agenda.map((a) => (
@@ -372,12 +337,12 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
             </div>
 
             {/* 4. Audience Target */}
-            <div className="pt-2 border-t border-slate-100">
-              <label className="stage-label">Target Audience</label>
+            <div className="pt-3 border-t border-slate-100">
+              <label className="soft-label">Target Audience</label>
               <select
                 value={audience}
                 onChange={(e) => setAudience(e.target.value)}
-                className="stage-select"
+                className="soft-select text-xs"
               >
                 {audienceOptions.map((aud) => (
                   <option key={aud} value={aud}>
@@ -388,18 +353,18 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
             </div>
 
             {/* 5. Delivery Tone Selection */}
-            <div className="pt-2 border-t border-slate-100">
-              <label className="stage-label">Delivery Tone</label>
+            <div className="pt-3 border-t border-slate-100">
+              <label className="soft-label">Delivery Tone</label>
               <div className="grid grid-cols-3 gap-1.5">
                 {toneOptions.map((t) => (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => setTone(t.id)}
-                    className={`p-2 rounded-xl text-center text-xs font-semibold border transition ${
+                    className={`py-2 px-2.5 rounded-xl text-center text-xs font-semibold border transition ${
                       tone === t.id
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm font-bold'
+                        : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     {t.label}
@@ -409,18 +374,18 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
             </div>
 
             {/* 6. Script Length */}
-            <div className="pt-2 border-t border-slate-100">
-              <label className="stage-label">Script Length</label>
+            <div className="pt-3 border-t border-slate-100">
+              <label className="soft-label">Script Length</label>
               <div className="grid grid-cols-3 gap-1.5">
                 {lengthOptions.map((l) => (
                   <button
                     key={l.id}
                     type="button"
                     onClick={() => setLength(l.id)}
-                    className={`p-2 rounded-xl text-center text-xs font-semibold border transition ${
+                    className={`py-2 px-1.5 rounded-xl text-center text-xs font-semibold border transition ${
                       length === l.id
-                        ? 'bg-indigo-50 text-indigo-700 border-indigo-300 font-bold'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200 font-bold'
+                        : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     {l.label}
@@ -430,14 +395,14 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
             </div>
 
             {/* 7. Special Anchor Instructions */}
-            <div className="pt-2 border-t border-slate-100">
-              <label className="stage-label">Special Talking Points & Sponsor Mentions</label>
+            <div className="pt-3 border-t border-slate-100">
+              <label className="soft-label">Special Talking Points & Cues</label>
               <input
                 type="text"
                 value={customNotes}
                 onChange={(e) => setCustomNotes(e.target.value)}
-                placeholder="e.g. Acknowledge hackathon sponsors, remind audience about feedback QR"
-                className="stage-input"
+                placeholder="e.g. Acknowledge sponsors, remind audience about QR code"
+                className="soft-input text-xs"
               />
             </div>
 
@@ -445,7 +410,7 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
             <button
               onClick={handleGenerate}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold tracking-wide shadow-sm transition active:scale-98 disabled:opacity-50"
+              className="w-full btn-pill-accent text-sm flex items-center justify-center gap-2 py-3"
             >
               <Sparkles className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               <span>{loading ? 'Composing Script...' : 'GENERATE SCRIPT'}</span>
@@ -453,17 +418,15 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
           </div>
         </div>
 
-        {/* ═════════════════════════════════════════════════════════════
-            RIGHT COLUMN (7 Cols): GENERATED SCRIPT DISPLAY & ACTIONS
-            ═════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col h-full min-h-[580px]">
+        {/* RIGHT COLUMN (7 Cols): GENERATED SCRIPT DISPLAY & ACTIONS */}
+        <div className="lg:col-span-7 space-y-6">
+          <div className="p-6 soft-card flex flex-col h-full min-h-[580px] space-y-4">
             
             {/* Header / Actions Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  AI GENERATED
+                <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-purple-50 text-purple-700 border border-purple-200">
+                  AI Generated
                 </span>
                 <span className="text-xs font-bold text-slate-800">
                   {scriptType} ({tone} Tone)
@@ -474,9 +437,9 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setIsEditing(!isEditing)}
-                  className={`p-1.5 rounded-lg border transition text-xs font-semibold ${
+                  className={`p-2 rounded-full border transition text-xs ${
                     isEditing
-                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      ? 'bg-slate-900 text-white border-slate-900'
                       : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                   }`}
                   title="Edit script directly"
@@ -487,7 +450,7 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
                 <button
                   onClick={handleGenerate}
                   disabled={loading}
-                  className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition"
+                  className="p-2 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition"
                   title="Regenerate"
                 >
                   <RotateCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -495,7 +458,7 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
 
                 <button
                   onClick={handleCopy}
-                  className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition"
+                  className="p-2 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition"
                   title="Copy to Clipboard"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
@@ -503,7 +466,7 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
 
                 <button
                   onClick={handleSaveToArchive}
-                  className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition"
+                  className="p-2 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition"
                   title="Save script"
                 >
                   {saved ? <BookmarkCheck className="w-3.5 h-3.5 text-indigo-600" /> : <Bookmark className="w-3.5 h-3.5" />}
@@ -512,7 +475,7 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
                 <button
                   onClick={handleToggleSpeech}
                   disabled={!generatedScript}
-                  className={`p-1.5 rounded-lg border transition ${
+                  className={`p-2 rounded-full border transition ${
                     isSpeaking
                       ? 'bg-rose-600 text-white border-rose-600 animate-pulse'
                       : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
@@ -529,19 +492,19 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
                       toast.info('Script loaded into stage teleprompter.');
                     }
                   }}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs"
+                  className="btn-pill-primary text-xs px-3.5 py-1.5 flex items-center gap-1.5"
                   title="Send to stage teleprompter"
                 >
                   <Tv className="w-3.5 h-3.5" />
-                  <span>Send to Teleprompter</span>
+                  <span>Teleprompter</span>
                 </button>
               </div>
             </div>
 
             {/* Generated Script Content Area */}
-            <div className="flex-1 py-4 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto">
               {loading ? (
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 h-full min-h-[380px] space-y-4 font-sans">
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 h-full min-h-[380px] space-y-4 font-sans">
                   <div className="flex items-center gap-2">
                     <Skeleton className="w-32 h-6" />
                     <Skeleton className="w-20 h-6" />
@@ -559,16 +522,16 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
                   rows={14}
                   value={generatedScript}
                   onChange={(e) => setGeneratedScript(e.target.value)}
-                  className="w-full h-full min-h-[380px] p-4 rounded-xl bg-slate-50 border border-indigo-300 text-slate-900 text-sm font-sans leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none font-normal"
+                  className="w-full h-full min-h-[380px] p-5 rounded-2xl bg-slate-50 border border-indigo-300 text-slate-900 text-sm font-sans leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none font-normal"
                 />
               ) : (
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 h-full min-h-[380px] space-y-3 font-sans">
+                <div className="p-5 rounded-2xl bg-slate-50/80 border border-slate-100 h-full min-h-[380px] space-y-3 font-sans">
                   {parsedScript.map((line, idx) => {
                     if (line.type === 'cue') {
                       return (
                         <div
                           key={idx}
-                          className="my-2.5 px-3 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-800 font-mono text-xs font-bold uppercase tracking-wider inline-block"
+                          className="my-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 font-mono text-xs font-bold uppercase tracking-wider inline-block"
                         >
                           ⚡ {line.content}
                         </div>
@@ -586,11 +549,11 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
             </div>
 
             {/* Footer / Telemetry Bar */}
-            <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
               <span className="text-amber-800 font-medium">
                 ⚡ Amber badges denote physical anchor cues (DO NOT READ ALOUD)
               </span>
-              <span className="font-mono text-slate-500">
+              <span className="font-mono">
                 Pacing: ~130 words/min
               </span>
             </div>
