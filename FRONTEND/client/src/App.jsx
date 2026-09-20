@@ -14,6 +14,7 @@ import LiveDashboard from './views/LiveDashboard';
 import LiveControlView from './views/LiveControlView';
 import AgendaManager from './views/AgendaManager';
 import SpeakerManager from './views/SpeakerManager';
+import SpeakerConsole from './views/SpeakerConsole';
 import AIScriptGenerator from './views/AIScriptGenerator';
 import DelayManager from './views/DelayManager';
 import EventSetup from './views/EventSetup';
@@ -33,9 +34,10 @@ import EventDetailPage from './pages/EventDetailPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import UserPortalPage from './pages/UserPortalPage';
+import { ShieldAlert, AlertTriangle } from 'lucide-react';
 
 export default function App() {
-  // Path Router State (supports /home, /overview, /what-is-sasm, /learn, /how-it-works, /login, /signup, /events, /events/:id, /user, /manager)
+  // Path Router State
   const [currentPath, setCurrentPath] = useState(() => {
     return window.location.pathname || '/';
   });
@@ -55,6 +57,32 @@ export default function App() {
       return null;
     }
   });
+
+  // Dynamic Speaker Console State
+  const [speakerConsoleState, setSpeakerConsoleState] = useState({
+    loading: false,
+    error: null,
+    status: 200,
+    data: null
+  });
+
+  // Sync / verify session from backend on page refresh (F5)
+  useEffect(() => {
+    const verifySession = async () => {
+      if (currentUser?.email) {
+        try {
+          const res = await api.getMe();
+          if (res && res.success && res.user) {
+            setCurrentUser(res.user);
+            localStorage.setItem('sasm_user', JSON.stringify(res.user));
+          }
+        } catch (e) {
+          // Keep local state if server unreachable
+        }
+      }
+    };
+    verifySession();
+  }, []);
 
   // Handle URL history state change with automatic access control validation
   const handleNavigate = (path) => {
@@ -173,6 +201,43 @@ export default function App() {
     };
   }, []);
 
+  // Speaker Console Dynamic Event Data Loader effect
+  const speakerRouteMatch =
+    currentPath.match(/^\/events\/([^\/]+)\/speaker\/?$/) ||
+    currentPath.match(/^\/speaker\/?$/);
+
+  useEffect(() => {
+    if (speakerRouteMatch && currentUser) {
+      const requestedEvId = speakerRouteMatch[1] || currentUser.event_id || currentUser.eventId || 1;
+      setSpeakerConsoleState((prev) => ({ ...prev, loading: true, error: null }));
+
+      api.getSpeakerConsole(requestedEvId).then((res) => {
+        if (res && res.success) {
+          setSpeakerConsoleState({
+            loading: false,
+            error: null,
+            status: 200,
+            data: res
+          });
+        } else {
+          setSpeakerConsoleState({
+            loading: false,
+            error: res?.message || 'Access Denied',
+            status: res?.status || 403,
+            data: null
+          });
+        }
+      }).catch((err) => {
+        setSpeakerConsoleState({
+          loading: false,
+          error: err.message || 'Access Denied',
+          status: 403,
+          data: null
+        });
+      });
+    }
+  }, [currentPath, currentUser]);
+
   const handleUpdateActivityStatus = async (id, status) => {
     try {
       const res = await api.updateActivityStatus(id, status);
@@ -205,6 +270,104 @@ export default function App() {
   };
 
   // ─────────────────────────────────────────────────────────────
+  // STRICT ROLE-BASED ROUTE GUARD FOR SPEAKER CONSOLE (/events/:eventId/speaker & /speaker)
+  // ─────────────────────────────────────────────────────────────
+  if (speakerRouteMatch) {
+    // 1. Unauthenticated visitor trying to access speaker console -> Redirect to Login
+    if (!currentUser) {
+      return (
+        <PublicLayout
+          currentPath={currentPath}
+          selectedCity={selectedCity}
+          onSelectCity={setSelectedCity}
+          onNavigate={handleNavigate}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+        >
+          <LoginPage
+            onNavigate={handleNavigate}
+            onLoginSuccess={handleLoginSuccess}
+          />
+        </PublicLayout>
+      );
+    }
+
+    // 2. Loading state while fetching event console data
+    if (speakerConsoleState.loading) {
+      return <DashboardSkeleton />;
+    }
+
+    // 3. 403 Forbidden Access Denied State (e.g. speaker changed URL to another event)
+    if (speakerConsoleState.status === 403 || (speakerConsoleState.error && speakerConsoleState.error.includes('Access Denied'))) {
+      return (
+        <PublicLayout
+          currentPath={currentPath}
+          selectedCity={selectedCity}
+          onSelectCity={setSelectedCity}
+          onNavigate={handleNavigate}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+        >
+          <div className="max-w-xl mx-auto my-16 p-8 bg-white border border-red-200 rounded-3xl shadow-sm text-center space-y-4 font-sans animate-fade-in">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center mx-auto">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Access Denied</h2>
+            <p className="text-xs text-slate-600 font-mono">
+              You do not have permission to access this event.
+            </p>
+            <div className="pt-2 text-[11px] font-mono text-slate-400">
+              Authenticated Account: <span className="font-bold text-slate-800">{currentUser.name} ({currentUser.email})</span> • Assigned Event ID: <span className="font-bold text-slate-800">#{currentUser.event_id || currentUser.eventId || 1}</span>
+            </div>
+          </div>
+        </PublicLayout>
+      );
+    }
+
+    // 4. 404 Event Not Found State
+    if (speakerConsoleState.status === 404 || (speakerConsoleState.error && speakerConsoleState.error.includes('Not Found'))) {
+      return (
+        <PublicLayout
+          currentPath={currentPath}
+          selectedCity={selectedCity}
+          onSelectCity={setSelectedCity}
+          onNavigate={handleNavigate}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+        >
+          <div className="max-w-xl mx-auto my-16 p-8 bg-white border border-slate-200 rounded-3xl shadow-sm text-center space-y-4 font-sans animate-fade-in">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Event Not Found</h2>
+            <p className="text-xs text-slate-600 font-mono">
+              The requested event could not be found.
+            </p>
+          </div>
+        </PublicLayout>
+      );
+    }
+
+    // 5. Successful Authorization -> Render Event Speaker Console
+    const consoleEvent = speakerConsoleState.data?.event || event;
+    const consoleAgenda = speakerConsoleState.data?.agenda || agenda;
+    const consoleSpeakers = speakerConsoleState.data?.speakers || speakers;
+    const consoleAnnouncements = speakerConsoleState.data?.announcements || announcements;
+
+    return (
+      <SpeakerConsole
+        event={consoleEvent}
+        agenda={consoleAgenda}
+        speakers={consoleSpeakers}
+        announcements={consoleAnnouncements}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onOpenTeleprompter={handleOpenTeleprompter}
+      />
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // STRICT ROLE-BASED ROUTE GUARD FOR MANAGER DASHBOARD (/manager*)
   // ─────────────────────────────────────────────────────────────
   if (currentPath === '/manager' || currentPath.startsWith('/manager')) {
@@ -227,7 +390,23 @@ export default function App() {
       );
     }
 
-    // 2. Normal User trying to open /manager -> BLOCK ACCESS + Redirect to /user
+    // 2. Speaker trying to open /manager -> Redirect to their assigned Speaker Console
+    if (currentUser.role === 'speaker') {
+      const targetEvId = currentUser.event_id || currentUser.eventId || 1;
+      return (
+        <SpeakerConsole
+          event={event}
+          agenda={agenda}
+          speakers={speakers}
+          announcements={announcements}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onOpenTeleprompter={handleOpenTeleprompter}
+        />
+      );
+    }
+
+    // 3. Normal User trying to open /manager -> BLOCK ACCESS + Redirect to /user
     if (currentUser.role === 'user') {
       return (
         <PublicLayout
@@ -255,7 +434,7 @@ export default function App() {
       );
     }
 
-    // 3. Manager User -> Render Complete Existing Manager Dashboard Console
+    // 4. Manager User -> Render Complete Existing Manager Dashboard Console
     if (loading) return <DashboardSkeleton />;
 
     if (loadError && !event) {
@@ -491,6 +670,12 @@ export default function App() {
           />
         );
       }
+      if (currentUser.role === 'speaker') {
+        const targetEvId = currentUser.event_id || currentUser.eventId || 1;
+        window.history.replaceState({}, '', `/events/${targetEvId}/speaker`);
+        setCurrentPath(`/events/${targetEvId}/speaker`);
+        return null;
+      }
       if (currentUser.role === 'manager') {
         window.history.replaceState({}, '', '/manager');
         setCurrentPath('/manager');
@@ -509,6 +694,19 @@ export default function App() {
       return <EventDetailPage eventId={eventId} onNavigate={handleNavigate} />;
     }
     if (currentPath === '/login') {
+      if (currentUser) {
+        if (currentUser.role === 'speaker') {
+          const targetEvId = currentUser.event_id || currentUser.eventId || 1;
+          window.history.replaceState({}, '', `/events/${targetEvId}/speaker`);
+          setCurrentPath(`/events/${targetEvId}/speaker`);
+          return null;
+        }
+        if (currentUser.role === 'manager') {
+          window.history.replaceState({}, '', '/manager');
+          setCurrentPath('/manager');
+          return null;
+        }
+      }
       return (
         <LoginPage
           onNavigate={handleNavigate}
@@ -534,14 +732,22 @@ export default function App() {
         );
       }
 
-      // 2. Manager trying to open /user -> Redirect to /manager
+      // 2. Speaker trying to open /user -> Redirect to their Speaker Console
+      if (currentUser.role === 'speaker') {
+        const targetEvId = currentUser.event_id || currentUser.eventId || 1;
+        window.history.replaceState({}, '', `/events/${targetEvId}/speaker`);
+        setCurrentPath(`/events/${targetEvId}/speaker`);
+        return null;
+      }
+
+      // 3. Manager trying to open /user -> Redirect to /manager
       if (currentUser.role === 'manager') {
         window.history.replaceState({}, '', '/manager');
         setCurrentPath('/manager');
         return null;
       }
 
-      // 3. User -> Render User Dashboard
+      // 4. User -> Render User Dashboard
       return (
         <UserPortalPage
           selectedCity={selectedCity}

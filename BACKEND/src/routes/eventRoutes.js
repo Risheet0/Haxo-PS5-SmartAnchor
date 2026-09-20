@@ -95,8 +95,106 @@ router.get('/current', async (req, res, next) => {
 });
 
 /**
+ * Helper to resolve event by integer ID, string ID, slug, or title
+ */
+async function resolveEvent(paramId) {
+  if (!paramId) return null;
+  let event = await dbGet(`SELECT * FROM events WHERE id = ? OR LOWER(name) = ? OR LOWER(title) = ?`, [
+    paramId,
+    String(paramId).toLowerCase(),
+    String(paramId).toLowerCase()
+  ]);
+  if (!event && /^\d+$/.test(String(paramId))) {
+    event = await dbGet(`SELECT * FROM events WHERE id = ?`, [Number(paramId)]);
+  }
+  if (!event) {
+    const cleaned = String(paramId).replace(/^(event_|events_|ev-)/i, '');
+    if (/^\d+$/.test(cleaned)) {
+      event = await dbGet(`SELECT * FROM events WHERE id = ?`, [Number(cleaned)]);
+    } else {
+      event = await dbGet(`SELECT * FROM events WHERE LOWER(name) LIKE ? OR LOWER(title) LIKE ?`, [
+        `%${cleaned.toLowerCase()}%`,
+        `%${cleaned.toLowerCase()}%`
+      ]);
+    }
+  }
+  return event;
+}
+
+/**
+ * GET /api/events/:id/speaker-console
+ * Protected Speaker Console endpoint with strict backend 403 authorization check
+ */
+router.get('/:id/speaker-console', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const authEmail =
+      req.headers['x-user-email'] ||
+      req.headers['x-manager-email'] ||
+      req.query.email;
+
+    if (!authEmail) {
+      return res.status(401).json({
+        success: false,
+        message: '401 Unauthorized: Authentication header required.'
+      });
+    }
+
+    const normalizedEmail = String(authEmail).trim().toLowerCase();
+    const user = await dbGet(`SELECT * FROM users WHERE LOWER(email) = ?`, [normalizedEmail]);
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: '401 Unauthorized: User identity not found.'
+      });
+    }
+
+    const event = await resolveEvent(id);
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event Not Found: The requested event could not be found.'
+      });
+    }
+
+    // Backend Authorization Check: Ensure speaker's assigned event matches requested event
+    if (user.role === 'speaker' && String(user.event_id || 1) !== String(event.id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access Denied: You do not have permission to access this event.'
+      });
+    }
+
+    // Inactive Event Check
+    if (event.status && ['INACTIVE', 'CLOSED', 'ARCHIVED'].includes(event.status.toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        message: `Event ${event.status}: This event is currently ${event.status.toLowerCase()} and cannot be accessed.`
+      });
+    }
+
+    const formattedEvent = formatEvent(event);
+    const agenda = await dbAll(`SELECT * FROM agenda ORDER BY order_index ASC`);
+    const speakers = await dbAll(`SELECT * FROM speakers ORDER BY id ASC`);
+    const announcements = await dbAll(`SELECT * FROM announcements ORDER BY id DESC`);
+
+    return res.status(200).json({
+      success: true,
+      event: formattedEvent,
+      agenda,
+      speakers,
+      announcements
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /api/events/:id
- * Returns a specific event by ID
+ * Returns a specific event by ID with authorization checks
  */
 router.get('/:id', async (req, res, next) => {
   try {
@@ -106,10 +204,23 @@ router.get('/:id', async (req, res, next) => {
       return res.json(formatEvent(event));
     }
 
-    const event = await dbGet(`SELECT * FROM events WHERE id = ? OR name = ?`, [id, id]);
+    const event = await resolveEvent(id);
     if (!event) {
       return res.status(404).json({ error: `Event with ID "${id}" not found` });
     }
+
+    // Check authorization for speaker role if user header present
+    const authEmail = req.headers['x-user-email'] || req.headers['x-manager-email'];
+    if (authEmail) {
+      const user = await dbGet(`SELECT * FROM users WHERE LOWER(email) = ?`, [String(authEmail).trim().toLowerCase()]);
+      if (user && user.role === 'speaker' && String(user.event_id || 1) !== String(event.id)) {
+        return res.status(403).json({
+          error: '403 Forbidden',
+          message: 'Access Denied: You do not have permission to access this event.'
+        });
+      }
+    }
+
     res.json(formatEvent(event));
   } catch (err) {
     next(err);

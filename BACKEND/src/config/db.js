@@ -368,6 +368,8 @@ export const initDB = async () => {
     CREATE TABLE IF NOT EXISTS speakers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
+      email TEXT,
+      email_verified INTEGER DEFAULT 0,
       designation TEXT,
       organization TEXT,
       bio TEXT,
@@ -438,7 +440,9 @@ export const initDB = async () => {
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT,
+      temp_password TEXT,
       role TEXT NOT NULL DEFAULT 'user',
+      event_id INTEGER DEFAULT 1,
       email_verified INTEGER DEFAULT 0,
       created_at TEXT NOT NULL
     );
@@ -491,6 +495,24 @@ export const initDB = async () => {
     await addIfMissing('registration_status', "TEXT DEFAULT 'OPEN'");
     await addIfMissing('registration_deadline', 'TEXT');
     await addIfMissing('day_schedules', 'TEXT');
+
+    const speakerCols = await dbAll(`PRAGMA table_info(speakers)`);
+    const speakerColNames = speakerCols.map((c) => c.name);
+    if (!speakerColNames.includes('email')) {
+      try { await dbRun(`ALTER TABLE speakers ADD COLUMN email TEXT`); } catch (e) {}
+    }
+    if (!speakerColNames.includes('email_verified')) {
+      try { await dbRun(`ALTER TABLE speakers ADD COLUMN email_verified INTEGER DEFAULT 0`); } catch (e) {}
+    }
+
+    const userCols = await dbAll(`PRAGMA table_info(users)`);
+    const userColNames = userCols.map((c) => c.name);
+    if (!userColNames.includes('event_id')) {
+      try { await dbRun(`ALTER TABLE users ADD COLUMN event_id INTEGER DEFAULT 1`); } catch (e) {}
+    }
+    if (!userColNames.includes('temp_password')) {
+      try { await dbRun(`ALTER TABLE users ADD COLUMN temp_password TEXT`); } catch (e) {}
+    }
   } catch (err) {
     console.warn('[DB] Column migration check notice:', err.message);
   }
@@ -502,6 +524,40 @@ export const initDB = async () => {
     await resetToSeedData();
     console.log('[DB] ✅ Default dataset seeded successfully.');
   } else {
+    // Ensure Event 2 exists for multi-event authorization verification
+    const event2 = await dbGet(`SELECT id FROM events WHERE id = 2`);
+    if (!event2) {
+      await dbRun(
+        `INSERT INTO events (id, name, title, description, organizer_name, organizer, organizer_type, category, date, start_time, end_time, venue, room, city, status, current_delay_minutes, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          2,
+          'SCIENCEFEST 2026',
+          'SCIENCEFEST 2026',
+          'National Science Leadership Summit',
+          'National Science Leadership Summit',
+          'National Science Leadership Summit',
+          'Organization',
+          'Science',
+          '2026-10-15',
+          '09:00 AM',
+          '05:00 PM',
+          'Innovation Research Center',
+          'Hall B',
+          'Ahmedabad',
+          'UPCOMING',
+          0,
+          new Date().toISOString()
+        ]
+      );
+    }
+
+    // Ensure status alignment in SQLite database
+    try {
+      await dbRun(`UPDATE events SET status = 'LIVE' WHERE id = 1`);
+      await dbRun(`UPDATE events SET status = 'UPCOMING' WHERE id = 2`);
+    } catch (e) {}
+
     // Check if registration_form for event 1 exists
     const existingForm = await dbGet(`SELECT id FROM registration_forms WHERE event_id = 1`);
     if (!existingForm) {
@@ -512,6 +568,28 @@ export const initDB = async () => {
       );
     }
     console.log('[DB] Existing SQLite dataset detected. Retaining state.');
+  }
+
+  // Ensure default speaker accounts exist for test verification
+  try {
+    const risheetUser = await dbGet(`SELECT id FROM users WHERE LOWER(email) = 'risheet@example.com'`);
+    if (!risheetUser) {
+      await dbRun(
+        `INSERT INTO users (name, email, role, event_id, temp_password, email_verified, created_at)
+         VALUES ('Risheet', 'risheet@example.com', 'speaker', 1, 'Spk-123456', 1, ?)`,
+        [new Date().toISOString()]
+      );
+    }
+    const speakerBUser = await dbGet(`SELECT id FROM users WHERE LOWER(email) = 'speakerb@example.com'`);
+    if (!speakerBUser) {
+      await dbRun(
+        `INSERT INTO users (name, email, role, event_id, temp_password, email_verified, created_at)
+         VALUES ('Speaker B', 'speakerb@example.com', 'speaker', 2, 'Spk-654321', 1, ?)`,
+        [new Date().toISOString()]
+      );
+    }
+  } catch (e) {
+    console.warn('[DB] Default speaker seeding notice:', e.message);
   }
 };
 

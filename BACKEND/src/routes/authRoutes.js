@@ -206,4 +206,134 @@ router.post('/complete-signup', async (req, res, next) => {
   }
 });
 
+/**
+ * GET /api/auth/me
+ * Retrieves current authenticated user profile & event mapping
+ */
+router.get('/me', async (req, res, next) => {
+  try {
+    const authEmail =
+      req.headers['x-user-email'] ||
+      req.headers['x-manager-email'] ||
+      req.query.email;
+
+    if (!authEmail || !isValidEmail(String(authEmail))) {
+      return res.status(401).json({
+        success: false,
+        message: '401 Unauthorized: Valid authentication token or header required.'
+      });
+    }
+
+    const normalizedEmail = String(authEmail).trim().toLowerCase();
+    const userRecord = await dbGet(`SELECT * FROM users WHERE LOWER(email) = ?`, [normalizedEmail]);
+
+    if (!userRecord) {
+      return res.status(401).json({
+        success: false,
+        message: '401 Unauthorized: User record not found.'
+      });
+    }
+
+    const eventRecord = await dbGet(`SELECT * FROM events WHERE id = ?`, [userRecord.event_id || 1]);
+    const eventName = eventRecord?.name || 'TECHFEST 2026';
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        id: `usr-${userRecord.id}`,
+        name: userRecord.name,
+        email: userRecord.email,
+        role: userRecord.role || 'user',
+        event_id: userRecord.event_id || 1,
+        eventId: userRecord.event_id || 1,
+        event_name: eventName,
+        organization: eventName,
+        organizationId: `org-${userRecord.event_id || 1}`,
+        email_verified: Boolean(userRecord.email_verified)
+      }
+    });
+  } catch (err) {
+    console.error('[Auth API Error] me failed:', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve user authentication state.'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/login
+ * Manager / Speaker / User Authenticated Sign In Endpoint
+ */
+router.post('/login', async (req, res, next) => {
+  try {
+    const { email, password, role } = req.body || {};
+
+    if (!email || !isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid email address is required.'
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const userRecord = await dbGet(`SELECT * FROM users WHERE LOWER(email) = ?`, [normalizedEmail]);
+
+    if (userRecord) {
+      const actualRole = userRecord.role || role || 'user';
+      const eventId = userRecord.event_id || 1;
+      const eventRecord = await dbGet(`SELECT * FROM events WHERE id = ?`, [eventId]);
+      const eventName = eventRecord?.name || 'TECHFEST 2026';
+
+      return res.status(200).json({
+        success: true,
+        user: {
+          id: `usr-${userRecord.id}`,
+          name: userRecord.name,
+          email: userRecord.email,
+          role: actualRole,
+          event_id: eventId,
+          eventId: eventId,
+          event_name: eventName,
+          organization: eventName,
+          organizationId: `org-${eventId}`,
+          email_verified: Boolean(userRecord.email_verified),
+          logged_in_at: new Date().toISOString()
+        }
+      });
+    }
+
+    const resolvedRole = role === 'manager' || role === 'speaker' ? role : 'user';
+    const createdAt = new Date().toISOString();
+    const runResult = await dbRun(
+      `INSERT INTO users (name, email, role, event_id, email_verified, created_at)
+       VALUES (?, ?, ?, 1, 1, ?)`,
+      [normalizedEmail.split('@')[0], normalizedEmail, resolvedRole, createdAt]
+    );
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        id: `usr-${runResult.lastID}`,
+        name: normalizedEmail.split('@')[0],
+        email: normalizedEmail,
+        role: resolvedRole,
+        event_id: 1,
+        eventId: 1,
+        event_name: 'TechFest 2026',
+        organization: 'TechFest 2026',
+        organizationId: 'org-1',
+        email_verified: true,
+        logged_in_at: createdAt
+      }
+    });
+  } catch (err) {
+    console.error('[Auth API Error] login failed:', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Authentication failed. Please check your credentials.'
+    });
+  }
+});
+
 export default router;

@@ -33,15 +33,43 @@ const requireManagerRole = () => {
   }
 };
 
+const getAuthHeaders = () => {
+  try {
+    const saved = localStorage.getItem('sasm_user');
+    const user = saved ? JSON.parse(saved) : null;
+    if (user && user.email) {
+      return {
+        'x-manager-email': user.email,
+        'x-manager-name': user.name || '',
+        'x-user-email': user.email,
+        'x-user-role': user.role || ''
+      };
+    }
+  } catch (e) {}
+  return {};
+};
+
 /**
  * Helper to attempt network fetch with seamless fallback to LocalStorage mock database
  */
 const fetchWithFallback = async (url, options = {}, mockHandler) => {
   try {
-    const res = await fetch(url, options);
+    const mergedHeaders = {
+      ...getAuthHeaders(),
+      ...(options.headers || {})
+    };
+    const res = await fetch(url, { ...options, headers: mergedHeaders });
     const contentType = res.headers.get('content-type') || '';
-    if (res.ok && contentType.includes('application/json')) {
-      return await res.json();
+    if (contentType.includes('application/json')) {
+      const data = await res.json();
+      if (!res.ok) {
+        return {
+          success: false,
+          status: res.status,
+          message: data.message || data.error || `HTTP ${res.status} Error`
+        };
+      }
+      return data;
     }
   } catch (err) {
     // Network failed or server offline -> use mock handler
@@ -52,6 +80,85 @@ const fetchWithFallback = async (url, options = {}, mockHandler) => {
 import { SASM_MOCK_EVENTS } from './sasmEventsData';
 
 export const api = {
+  getMe: async () => {
+    return fetchWithFallback(
+      `${API_BASE}/auth/me`,
+      { method: 'GET' },
+      () => {
+        try {
+          const saved = localStorage.getItem('sasm_user');
+          if (saved) {
+            return { success: true, user: JSON.parse(saved) };
+          }
+        } catch (e) {}
+        return { success: false, message: 'Unauthenticated' };
+      }
+    );
+  },
+
+  getSpeakerConsole: async (eventId) => {
+    const saved = localStorage.getItem('sasm_user');
+    const user = saved ? JSON.parse(saved) : null;
+    return fetchWithFallback(
+      `${API_BASE}/events/${eventId}/speaker-console`,
+      { method: 'GET' },
+      () => {
+        const ev = getMockStore('event', INITIAL_EVENT);
+        if (user && user.role === 'speaker' && String(user.event_id || 1) !== String(eventId)) {
+          return {
+            success: false,
+            status: 403,
+            message: 'Access Denied: You do not have permission to access this event.'
+          };
+        }
+        if (String(eventId) !== '1' && String(eventId) !== 'techfest-2026' && String(eventId) !== String(ev.id)) {
+          return {
+            success: false,
+            status: 404,
+            message: 'Event Not Found: The requested event could not be found.'
+          };
+        }
+        return {
+          success: true,
+          event: ev,
+          agenda: getMockStore('agenda', INITIAL_AGENDA),
+          speakers: getMockStore('speakers', INITIAL_SPEAKERS),
+          announcements: getMockStore('announcements', INITIAL_ANNOUNCEMENTS)
+        };
+      }
+    );
+  },
+
+  login: async (credentials) => {
+    return fetchWithFallback(
+      `${API_BASE}/auth/login`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      },
+      () => {
+        const { email = 'user@example.com', role = 'user', name } = credentials;
+        const resolvedRole = role === 'manager' || role === 'speaker' ? role : 'user';
+        return {
+          success: true,
+          user: {
+            id: `usr-${Date.now()}`,
+            name: name || (resolvedRole === 'speaker' ? 'Risheet' : resolvedRole === 'manager' ? 'Event Manager' : 'Alex Johnson'),
+            email: email.trim(),
+            role: resolvedRole,
+            event_id: 1,
+            eventId: 1,
+            event_name: 'TechFest 2026',
+            organization: 'TechFest 2026',
+            organizationId: 'org-1',
+            email_verified: true,
+            logged_in_at: new Date().toISOString()
+          }
+        };
+      }
+    );
+  },
   // ─────────────────────────────────────────────────────────────────────────
   // 1. EVENT ENDPOINTS
   // ─────────────────────────────────────────────────────────────────────────
@@ -372,6 +479,34 @@ export const api = {
     });
   },
 
+  sendSpeakerOtp: async (email) => {
+    return fetchWithFallback(
+      `${API_BASE}/speakers/send-otp`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      },
+      () => {
+        return { success: true, message: 'Verification code sent to speaker email.' };
+      }
+    );
+  },
+
+  verifySpeakerOtp: async (email, otp) => {
+    return fetchWithFallback(
+      `${API_BASE}/speakers/verify-otp`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp })
+      },
+      () => {
+        return { success: true, message: 'Speaker email verified successfully' };
+      }
+    );
+  },
+
   createSpeaker: async (data) => {
     requireManagerRole(); // Security check
     return fetchWithFallback(
@@ -386,6 +521,8 @@ export const api = {
         const newSpeaker = {
           id: Date.now(),
           name: data.name || 'Anonymous Dignitary',
+          email: data.email || '',
+          email_verified: 1,
           designation: data.designation || 'Special Guest',
           organization: data.organization || 'Industry Partner',
           bio: data.bio || '',
@@ -429,6 +566,23 @@ export const api = {
         const filtered = speakers.filter((s) => s.id !== Number(id));
         setMockStore('speakers', filtered);
         return { success: true };
+      }
+    );
+  },
+
+  resendManagerEmail: async (speakerId) => {
+    requireManagerRole(); // Security check
+    return fetchWithFallback(
+      `${API_BASE}/speakers/${speakerId}/resend-manager-email`,
+      {
+        method: 'POST'
+      },
+      () => {
+        return {
+          success: true,
+          message: 'Notification email successfully delivered to manager email.',
+          managerEmail: 'manager@sasm.org'
+        };
       }
     );
   },

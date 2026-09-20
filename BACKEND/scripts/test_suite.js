@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 
 const API_BASE = 'http://localhost:5000';
 
-const request = (method, path, body = null) => {
+const request = (method, path, body = null, customHeaders = {}) => {
   return new Promise((resolve, reject) => {
     const url = new URL(path, API_BASE);
     const options = {
@@ -12,7 +12,8 @@ const request = (method, path, body = null) => {
       port: url.port,
       path: url.pathname,
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...customHeaders
       }
     };
 
@@ -96,6 +97,8 @@ async function runTests() {
     // 8. Create Speaker
     const newSpk = await request('POST', '/api/speakers', {
       name: 'Dr. Test Scientist',
+      email: 'drtest@example.com',
+      email_verified: true,
       designation: 'Lead Researcher',
       organization: 'Test Lab',
       bio: 'Pioneering test suite engineering.',
@@ -151,24 +154,46 @@ async function runTests() {
       }, 3000);
     });
 
-    // 13. Auth & OTP Endpoints (Brevo Email & OTP Security)
-    const sendOtpRes = await request('POST', '/api/auth/send-otp', { email: 'test.otp.user@example.com' });
+    // 13. Auth & Session Verification Endpoints (GET /api/auth/me)
+    const meRes = await request('GET', '/api/auth/me', null, { 'x-user-email': 'risheet@example.com' });
+    assert('Get Authenticated User Profile (GET /api/auth/me)', meRes.status === 200 && meRes.data?.user?.role === 'speaker');
+
+    // 14. Event-Based Speaker Console Authorization Tests
+    // 14a. Valid Speaker Access to Assigned Event 1 (Risheet -> Event 1)
+    const validSpeakerConsole = await request('GET', '/api/events/1/speaker-console', null, { 'x-user-email': 'risheet@example.com' });
+    assert('Valid Speaker Console Access (GET /api/events/1/speaker-console)', validSpeakerConsole.status === 200 && validSpeakerConsole.data?.event?.id === 1);
+
+    // 14b. Cross-Event Access Attempt Rejection (Risheet -> Event 2) -> Must Return 403 Forbidden
+    const forbiddenConsole = await request('GET', '/api/events/2/speaker-console', null, { 'x-user-email': 'risheet@example.com' });
+    assert('Cross-Event URL Tampering 403 Forbidden Rejection', forbiddenConsole.status === 403 && !forbiddenConsole.data?.event);
+
+    // 14c. Valid Speaker B Access to Event 2 (Speaker B -> Event 2)
+    const speakerBConsole = await request('GET', '/api/events/2/speaker-console', null, { 'x-user-email': 'speakerb@example.com' });
+    assert('Speaker B Access to Event 2 (GET /api/events/2/speaker-console)', speakerBConsole.status === 200 && speakerBConsole.data?.event?.id === 2);
+
+    // 14d. Non-Existent Event Request -> Must Return 404 Not Found
+    const notFoundConsole = await request('GET', '/api/events/999/speaker-console', null, { 'x-user-email': 'risheet@example.com' });
+    assert('Non-Existent Event 404 Not Found Handling', notFoundConsole.status === 404);
+
+    // 15. Auth & OTP Endpoints (Brevo Email & OTP Security)
+    const testOtpEmail = `test.otp.${Date.now()}@example.com`;
+    const sendOtpRes = await request('POST', '/api/auth/send-otp', { email: testOtpEmail });
     assert('Send OTP API (POST /api/auth/send-otp)', sendOtpRes.status === 200 && sendOtpRes.data?.success);
 
-    const cooldownRes = await request('POST', '/api/auth/send-otp', { email: 'test.otp.user@example.com' });
+    const cooldownRes = await request('POST', '/api/auth/send-otp', { email: testOtpEmail });
     assert('OTP Resend 60-Second Cooldown (POST /api/auth/send-otp)', cooldownRes.status === 429 && !cooldownRes.data?.success);
 
-    const invalidOtpRes = await request('POST', '/api/auth/verify-otp', { email: 'test.otp.user@example.com', otp: '000000' });
+    const invalidOtpRes = await request('POST', '/api/auth/verify-otp', { email: testOtpEmail, otp: '000000' });
     assert('Invalid OTP Verification (POST /api/auth/verify-otp)', invalidOtpRes.status === 400 && !invalidOtpRes.data?.success);
 
     const completeSignupRes = await request('POST', '/api/auth/complete-signup', {
       name: 'Test OTP Attendee',
-      email: 'test.otp.user@example.com',
+      email: testOtpEmail,
       role: 'user'
     });
     assert('Complete Signup API (POST /api/auth/complete-signup)', completeSignupRes.status === 200 && completeSignupRes.data?.user?.email_verified);
 
-    // 14. Clean up test activity
+    // 16. Clean up test activity
     await request('DELETE', `/api/agenda/${testActId}`);
     assert('Delete Agenda Item (DELETE /api/agenda/:id)', true);
 
