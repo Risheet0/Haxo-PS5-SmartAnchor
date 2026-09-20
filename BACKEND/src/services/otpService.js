@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { dbGet, dbRun } from '../config/db.js';
+import { dbGet, dbAll, dbRun } from '../config/db.js';
 
 /**
  * Generate a cryptographically secure 6-digit numeric OTP
@@ -49,12 +49,6 @@ export async function checkCooldown(email) {
 export async function createOtpRecord(email) {
   const normalizedEmail = email.trim().toLowerCase();
   
-  // Invalidate any previous active OTPs for this email
-  await dbRun(
-    `UPDATE otps SET is_used = 1 WHERE LOWER(email) = ? AND is_used = 0`,
-    [normalizedEmail]
-  );
-
   const otp = generateOtp();
   const otpHash = hashOtp(otp);
   const createdAt = new Date().toISOString();
@@ -70,56 +64,53 @@ export async function createOtpRecord(email) {
 }
 
 /**
- * Verify an entered OTP against stored hash
+ * Verify an entered OTP against stored active hashes for an email
  */
 export async function verifyOtpRecord(email, userOtp) {
   const normalizedEmail = email.trim().toLowerCase();
   const cleanOtp = String(userOtp).trim();
+  const nowIso = new Date().toISOString();
 
-  // Retrieve latest active OTP record for email
-  const record = await dbGet(
-    `SELECT * FROM otps WHERE LOWER(email) = ? AND is_used = 0 ORDER BY id DESC LIMIT 1`,
-    [normalizedEmail]
+  // Retrieve all unused, unexpired OTP records for email
+  const records = await dbAll(
+    `SELECT * FROM otps WHERE LOWER(email) = ? AND is_used = 0 AND expires_at > ? ORDER BY id DESC`,
+    [normalizedEmail, nowIso]
   );
 
-  if (!record) {
+  if (!records || records.length === 0) {
     return {
       success: false,
       message: 'Verification code has expired or is invalid. Please request a new code.'
     };
   }
 
-  // Check Expiration (5 minutes)
-  const isExpired = new Date(record.expires_at).getTime() < Date.now();
-  if (isExpired) {
-    await dbRun(`UPDATE otps SET is_used = 1 WHERE id = ?`, [record.id]);
-    return {
-      success: false,
-      message: 'Verification code has expired. Please request a new code.'
-    };
-  }
-
-  // Check Attempt Rate Limit (max 5 failed attempts)
-  if (record.attempts >= 5) {
-    await dbRun(`UPDATE otps SET is_used = 1 WHERE id = ?`, [record.id]);
-    return {
-      success: false,
-      message: 'Too many failed attempts. Please request a new verification code.'
-    };
-  }
-
-  // Hash comparison
   const inputHash = hashOtp(cleanOtp);
-  if (inputHash !== record.otp_hash) {
-    await dbRun(`UPDATE otps SET attempts = attempts + 1 WHERE id = ?`, [record.id]);
+  let matchedRecord = null;
+
+  for (const record of records) {
+    if (record.attempts >= 5) continue;
+    if (record.otp_hash === inputHash) {
+      matchedRecord = record;
+      break;
+    }
+  }
+
+  if (!matchedRecord) {
+    // Increment attempts on the active records
+    for (const record of records) {
+      await dbRun(`UPDATE otps SET attempts = attempts + 1 WHERE id = ?`, [record.id]);
+    }
     return {
       success: false,
       message: 'Invalid verification code. Please try again.'
     };
   }
 
-  // Successful Verification: Mark single-use OTP as used
-  await dbRun(`UPDATE otps SET is_used = 1 WHERE id = ?`, [record.id]);
+  // Successful Verification: Mark ALL active OTPs for this email as used
+  await dbRun(
+    `UPDATE otps SET is_used = 1 WHERE LOWER(email) = ? AND is_used = 0`,
+    [normalizedEmail]
+  );
 
   // Update email_verified status in users table if user exists
   await dbRun(`UPDATE users SET email_verified = 1 WHERE LOWER(email) = ?`, [normalizedEmail]);

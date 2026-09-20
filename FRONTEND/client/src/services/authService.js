@@ -6,6 +6,19 @@
 const API_BASE = '/api/auth';
 
 /**
+ * Safely parse JSON response from fetch, avoiding HTML error page crashes
+ */
+async function safeJsonParse(res) {
+  try {
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return await res.json();
+    }
+  } catch (err) {}
+  return { success: false, message: 'Server error occurred. Please ensure backend server is running.' };
+}
+
+/**
  * Mask an email address for privacy display (e.g. "alex.johnson@example.com" -> "a**********n@example.com")
  */
 export function maskEmail(email) {
@@ -69,8 +82,8 @@ export async function sendOtp(email) {
       body: JSON.stringify({ email: email.trim() })
     });
 
-    const data = await res.json();
-    if (!res.ok) {
+    const data = await safeJsonParse(res);
+    if (!res.ok || !data.success) {
       throw new Error(data.message || 'Failed to send verification code.');
     }
 
@@ -95,8 +108,8 @@ export async function sendLoginOtp(email, role) {
       body: JSON.stringify({ email: email.trim(), role })
     });
 
-    const data = await res.json();
-    if (!res.ok) {
+    const data = await safeJsonParse(res);
+    if (!res.ok || !data.success) {
       throw new Error(data.message || 'Failed to send login verification code.');
     }
 
@@ -124,8 +137,8 @@ export async function verifyOtp(email, otp) {
       })
     });
 
-    const data = await res.json();
-    if (!res.ok) {
+    const data = await safeJsonParse(res);
+    if (!res.ok || !data.success) {
       return {
         success: false,
         message: data.message || 'Invalid verification code. Please try again.'
@@ -168,7 +181,7 @@ export async function completeSignup(userData) {
       })
     });
 
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     if (res.ok && data.user) {
       return { success: true, user: data.user };
     }

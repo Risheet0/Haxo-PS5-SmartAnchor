@@ -4,7 +4,8 @@ let socketInstance = null;
 
 export const getSocket = () => {
   if (!socketInstance) {
-    socketInstance = io(window.location.origin, {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    socketInstance = io(socketUrl, {
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       transports: ['websocket', 'polling']

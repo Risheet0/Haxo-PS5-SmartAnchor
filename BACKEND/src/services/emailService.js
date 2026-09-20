@@ -9,8 +9,9 @@ function getTransporter() {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = Number(process.env.SMTP_PORT || 465);
   const secure = process.env.SMTP_SECURE === 'false' ? false : true;
-  const user = process.env.SMTP_USER || process.env.SENDER_EMAIL || 'ddoinfo098@gmail.com';
-  const pass = process.env.SMTP_PASS;
+  const user = (process.env.SMTP_USER || process.env.SENDER_EMAIL || 'ddoinfo098@gmail.com').trim();
+  const rawPass = process.env.SMTP_PASS || '';
+  const pass = rawPass.replace(/\s+/g, '');
 
   if (pass && pass !== 'YOUR_SMTP_APP_PASSWORD') {
     return nodemailer.createTransport({
