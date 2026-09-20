@@ -128,6 +128,10 @@ export default function AIScriptGenerator({
       const res = await api.generateScript({
         scriptType,
         speakerId: speakerId ? Number(speakerId) : null,
+        speakerName: customSpeakerName || selectedSpeaker?.name,
+        speakerOrg: selectedSpeaker?.organization,
+        speakerDesig: selectedSpeaker?.designation,
+        speakerBio: selectedSpeaker?.bio,
         currentActivityId: currentActivityId ? Number(currentActivityId) : null,
         nextActivityId: nextActivityId ? Number(nextActivityId) : null,
         tone,
@@ -425,8 +429,9 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
             {/* Header / Actions Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-purple-50 text-purple-700 border border-purple-200">
-                  AI Generated
+                <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {metadata?.provider || 'Google Gemini AI'}
                 </span>
                 <span className="text-xs font-bold text-slate-800">
                   {scriptType} ({tone} Tone)
@@ -504,18 +509,35 @@ Please join me in welcoming **${fallbackSpeaker}**${selectedSpeaker?.organizatio
             {/* Generated Script Content Area */}
             <div className="flex-1 overflow-y-auto">
               {loading ? (
-                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 h-full min-h-[380px] space-y-4 font-sans">
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="w-32 h-6" />
-                    <Skeleton className="w-20 h-6" />
+                <div className="p-8 rounded-2xl bg-purple-50/40 border border-purple-100/80 h-full min-h-[380px] flex flex-col items-center justify-center space-y-4 text-center animate-fade-in">
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-3xl bg-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-500/30 animate-pulse">
+                      <Sparkles className="w-7 h-7 animate-spin" />
+                    </div>
+                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white" />
                   </div>
-                  <Skeleton className="w-full h-4" />
-                  <Skeleton className="w-5/6 h-4" />
-                  <Skeleton className="w-4/5 h-4" />
-                  <Skeleton className="w-28 h-6 my-2" />
-                  <Skeleton className="w-full h-4" />
-                  <Skeleton className="w-11/12 h-4" />
-                  <Skeleton className="w-3/4 h-4" />
+                  <div className="space-y-1 max-w-sm">
+                    <div className="text-sm font-bold text-slate-900">
+                      Generating with Google Gemini AI...
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Synthesizing authentic stage pacing, audience hooks, and live physical cues
+                    </p>
+                  </div>
+                </div>
+              ) : !generatedScript ? (
+                <div className="flex flex-col items-center justify-center h-full min-h-[380px] p-8 text-center rounded-2xl bg-slate-50/50 border border-dashed border-slate-200 space-y-4">
+                  <div className="w-14 h-14 rounded-3xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shadow-sm">
+                    <Sparkles className="w-7 h-7" />
+                  </div>
+                  <div className="max-w-sm space-y-1">
+                    <h4 className="text-sm font-bold text-slate-800">
+                      Ready to Synthesize Stage Script
+                    </h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Configure your tone, speaker, and length settings on the left, then click <strong className="text-purple-700">"GENERATE SCRIPT"</strong> to compose with live AI.
+                    </p>
+                  </div>
                 </div>
               ) : isEditing ? (
                 <textarea
