@@ -12,12 +12,19 @@ import {
   Volume2,
   Copy,
   Check,
-  Eye
+  Eye,
+  Mail,
+  CheckCircle2,
+  RefreshCw,
+  Shield,
+  AlertTriangle
 } from 'lucide-react';
 import ScriptWorkflowModal from '../components/ScriptWorkflowModal';
 import { useToast } from '../components/ui/ToastContext';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import OtpInput from '../components/auth/OtpInput';
+import OtpTimer from '../components/auth/OtpTimer';
 import { getSpeakerAvatar, parseStageScript } from '../utils/formatters';
 import { api } from '../services/api';
 
@@ -46,8 +53,22 @@ export default function SpeakerManager({
   const [copied, setCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
+  // Email & Verification States
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [otpError, setOtpError] = useState('');
+
+  // Manager Email Success & Retry State
+  const [createdSuccessResult, setCreatedSuccessResult] = useState(null);
+  const [resendingEmail, setResendingEmail] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
+    email: '',
     designation: '',
     organization: '',
     bio: '',
@@ -95,10 +116,81 @@ export default function SpeakerManager({
     return matchesStatus && matchesSession && matchesSearch;
   });
 
+  const isValidEmailFormat = (email) => {
+    if (!email || !email.trim()) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  };
+
+  const handleEmailChange = (e) => {
+    const val = e.target.value;
+    setFormData((prev) => ({ ...prev, email: val }));
+    setEmailError('');
+    if (isEmailVerified) {
+      setIsEmailVerified(false);
+      setOtpSent(false);
+      setOtpValue('');
+    }
+  };
+
+  const handleSendSpeakerOtp = async () => {
+    if (!formData.email || !formData.email.trim()) {
+      setEmailError('Email ID is required.');
+      return;
+    }
+    if (!isValidEmailFormat(formData.email)) {
+      setEmailError('Please enter a valid email address (e.g. speaker@example.com).');
+      return;
+    }
+    setEmailError('');
+    setSendingOtp(true);
+    try {
+      const res = await api.sendSpeakerOtp(formData.email.trim());
+      if (res.success || res.message) {
+        setOtpSent(true);
+        setOtpValue('');
+        setOtpError('');
+        toast.success(`Verification code sent to ${formData.email.trim()}`);
+      } else {
+        setEmailError(res.message || 'Failed to send OTP.');
+      }
+    } catch (err) {
+      console.error(err);
+      setEmailError(err.message || 'Failed to send OTP.');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifySpeakerOtp = async () => {
+    if (!otpValue || otpValue.length !== 6) {
+      setOtpError('Please enter the 6-digit verification code.');
+      return;
+    }
+    setOtpError('');
+    setVerifyingOtp(true);
+    try {
+      const res = await api.verifySpeakerOtp(formData.email.trim(), otpValue);
+      if (res.success) {
+        setIsEmailVerified(true);
+        setOtpSent(false);
+        toast.success('Speaker email verified successfully!');
+      } else {
+        setOtpError(res.message || 'Invalid verification code. Please try again.');
+      }
+    } catch (err) {
+      console.error(err);
+      setOtpError(err.message || 'Failed to verify OTP code.');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
   const openCreateModal = () => {
     setEditingSpeaker(null);
+    setCreatedSuccessResult(null);
     setFormData({
       name: '',
+      email: '',
       designation: '',
       organization: '',
       bio: '',
@@ -106,13 +198,20 @@ export default function SpeakerManager({
       avatar_url: '',
       social_url: ''
     });
+    setIsEmailVerified(false);
+    setOtpSent(false);
+    setOtpValue('');
+    setEmailError('');
+    setOtpError('');
     setIsModalOpen(true);
   };
 
   const openEditModal = (speaker) => {
     setEditingSpeaker(speaker);
+    setCreatedSuccessResult(null);
     setFormData({
       name: speaker.name,
+      email: speaker.email || '',
       designation: speaker.designation,
       organization: speaker.organization,
       bio: speaker.bio || '',
@@ -120,6 +219,11 @@ export default function SpeakerManager({
       avatar_url: speaker.avatar_url || '',
       social_url: speaker.social_url || ''
     });
+    setIsEmailVerified(true);
+    setOtpSent(false);
+    setOtpValue('');
+    setEmailError('');
+    setOtpError('');
     setIsModalOpen(true);
   };
 
@@ -200,25 +304,69 @@ Please give an enthusiastic round of applause for **${speaker.name}**!"`;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return; // Protect against double click / duplicate submission
     if (!formData.name.trim() || !formData.designation.trim() || !formData.organization.trim())
       return;
 
+    if (!formData.email || !isValidEmailFormat(formData.email)) {
+      setEmailError('Valid Email ID is required.');
+      return;
+    }
+
+    if (!isEmailVerified && !editingSpeaker) {
+      setEmailError('Please verify speaker email address before creating speaker.');
+      return;
+    }
+
     setLoading(true);
     try {
+      const payload = {
+        ...formData,
+        email_verified: isEmailVerified ? 1 : 0
+      };
       if (editingSpeaker) {
-        await api.updateSpeaker(editingSpeaker.id, formData);
+        await api.updateSpeaker(editingSpeaker.id, payload);
         toast.success('Speaker profile updated successfully.');
+        setIsModalOpen(false);
+        onRefresh();
       } else {
-        await api.createSpeaker(formData);
+        const res = await api.createSpeaker(payload);
         toast.success('Speaker registered successfully.');
+        setCreatedSuccessResult({
+          speaker: res,
+          emailSent: res.emailSent !== false,
+          managerEmail: res.managerEmail || 'your registered Manager email'
+        });
+        onRefresh();
       }
-      setIsModalOpen(false);
-      onRefresh();
     } catch (err) {
       console.error(err);
-      toast.error('Failed to save speaker profile.');
+      toast.error(err.message || 'Failed to save speaker profile.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRetryManagerEmail = async () => {
+    if (!createdSuccessResult?.speaker?.id) return;
+    setResendingEmail(true);
+    try {
+      const res = await api.resendManagerEmail(createdSuccessResult.speaker.id);
+      if (res.success || res.message) {
+        toast.success(`Notification email delivered to ${res.managerEmail || 'Manager email'}`);
+        setCreatedSuccessResult((prev) => ({
+          ...prev,
+          emailSent: true,
+          managerEmail: res.managerEmail || prev?.managerEmail
+        }));
+      } else {
+        toast.error('Failed to send notification email. Please try again.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to resend email.');
+    } finally {
+      setResendingEmail(false);
     }
   };
 
@@ -652,110 +800,333 @@ Please give an enthusiastic round of applause for **${speaker.name}**!"`;
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
           <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <User className="w-5 h-5 text-indigo-600" />
-                <h3 className="text-base font-bold text-slate-900">
-                  {editingSpeaker ? 'Edit Speaker Profile' : 'Add New Dignitary / Speaker'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            
+            {/* ── SUCCESS RESULT SCREEN ── */}
+            {createdSuccessResult ? (
+              createdSuccessResult.emailSent ? (
+                <div className="p-8 text-center space-y-6 animate-fade-in">
+                  <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle2 className="w-10 h-10" />
+                  </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="soft-label">Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Dr. Rajeshwari Menon"
-                  className="soft-input"
-                />
-              </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-black text-slate-950 uppercase tracking-tight">
+                      ✓ Speaker Created Successfully
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-md mx-auto">
+                      The speaker has been added successfully.
+                    </p>
+                    <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-xs text-indigo-950 space-y-1 my-3 text-left">
+                      <div className="font-bold text-indigo-900 text-xs flex items-center gap-1.5">
+                        <Mail className="w-4 h-4 text-indigo-600" />
+                        <span>Manager Email Dispatch:</span>
+                      </div>
+                      <p className="text-slate-700 pt-0.5">
+                        Login information has been sent to your registered Manager email:
+                      </p>
+                      <div className="font-mono font-bold text-indigo-700 text-xs pt-1">
+                        {createdSuccessResult.managerEmail}
+                      </div>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="soft-label">Designation / Role *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.designation}
-                    onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                    placeholder="e.g. VP of Research & AI"
-                    className="soft-input"
-                  />
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs text-slate-600 space-y-1.5 font-mono">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                      <Shield className="w-4 h-4 text-emerald-600" />
+                      <span>Existing Manager Login Notice</span>
+                    </div>
+                    <div>• No new Manager account was created.</div>
+                    <div>• Use your existing Manager username and password.</div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreatedSuccessResult(null);
+                      setIsModalOpen(false);
+                      onRefresh();
+                    }}
+                    className="w-full btn-pill-primary text-xs py-3 font-bold uppercase tracking-wider shadow-md"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                /* ── EMAIL DELIVERY FAILED SCREEN ── */
+                <div className="p-8 text-center space-y-6 animate-fade-in">
+                  <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-sm">
+                    <AlertTriangle className="w-10 h-10" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold text-slate-950">
+                      Speaker Created (Email Delivery Failed)
+                    </h3>
+                    <p className="text-xs sm:text-sm text-amber-900 leading-relaxed max-w-md mx-auto font-medium">
+                      Speaker created successfully, but the notification email could not be sent.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-left text-xs text-amber-900 font-mono">
+                    <div>Note: Retrying email will ONLY resend the notification to {createdSuccessResult.managerEmail} and will NOT create duplicate speaker records.</div>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCreatedSuccessResult(null);
+                        setIsModalOpen(false);
+                        onRefresh();
+                      }}
+                      className="w-1/2 btn-pill-secondary text-xs py-3 font-bold"
+                    >
+                      Close
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleRetryManagerEmail}
+                      disabled={resendingEmail}
+                      className="w-1/2 btn-pill-primary text-xs py-3 font-bold flex items-center justify-center gap-2 shadow-md"
+                    >
+                      {resendingEmail ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Retrying Email...</span>
+                        </>
+                      ) : (
+                        <span>Retry Email</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )
+            ) : (
+              /* ── NORMAL FORM ── */
+              <>
+                <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <User className="w-5 h-5 text-indigo-600" />
+                    <h3 className="text-base font-bold text-slate-900">
+                      {editingSpeaker ? 'Edit Speaker Profile' : 'Add New Dignitary / Speaker'}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
 
-                <div>
-                  <label className="soft-label">Organization *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.organization}
-                    onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                    placeholder="e.g. DeepMind"
-                    className="soft-input"
-                  />
-                </div>
-              </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                  <div>
+                    <label className="soft-label">Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="e.g. Dr. Rajeshwari Menon"
+                      className="soft-input"
+                    />
+                  </div>
 
-              <div>
-                <label className="soft-label">Keynote / Session Topic</label>
-                <input
-                  type="text"
-                  value={formData.topic}
-                  onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
-                  placeholder="e.g. Autonomous Real-Time Multi-Agent Architectures"
-                  className="soft-input"
-                />
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="soft-label">Designation / Role *</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.designation}
+                        onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                        placeholder="e.g. VP of Research & AI"
+                        className="soft-input"
+                      />
+                    </div>
 
-              <div>
-                <label className="soft-label">Photo / Avatar URL (Optional)</label>
-                <input
-                  type="text"
-                  value={formData.avatar_url}
-                  onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
-                  placeholder="Leave blank for automatic stylized avatar"
-                  className="soft-input"
-                />
-              </div>
+                    <div>
+                      <label className="soft-label">Organization *</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.organization}
+                        onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                        placeholder="e.g. DeepMind"
+                        className="soft-input"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="soft-label">Biographical Context (for Anchor Cues)</label>
-                <textarea
-                  rows={3}
-                  value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  placeholder="Notable achievements, career highlights, book authorship, key talking points..."
-                  className="soft-input resize-none"
-                />
-              </div>
+                  {/* Email ID & Email Verification OTP Flow */}
+                  <div>
+                    <label className="soft-label flex items-center justify-between">
+                      <span>Email ID *</span>
+                      {isEmailVerified && (
+                        <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Email Verified
+                        </span>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={handleEmailChange}
+                        disabled={isEmailVerified || otpSent}
+                        placeholder="e.g. speaker@example.com"
+                        className={`soft-input pr-28 ${emailError ? 'border-red-400 bg-red-50/20' : ''}`}
+                      />
+                      {!isEmailVerified && !otpSent && (
+                        <button
+                          type="button"
+                          onClick={handleSendSpeakerOtp}
+                          disabled={sendingOtp || !isValidEmailFormat(formData.email)}
+                          className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 text-xs font-bold rounded-xl transition flex items-center gap-1 shadow-sm"
+                        >
+                          {sendingOtp ? (
+                            <>
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                              <span>Sending...</span>
+                            </>
+                          ) : (
+                            <span>Verify Email</span>
+                          )}
+                        </button>
+                      )}
+                      {isEmailVerified && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEmailVerified(false);
+                            setOtpSent(false);
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 hover:text-indigo-600 underline"
+                        >
+                          Change
+                        </button>
+                      )}
+                    </div>
+                    {emailError && <p className="text-xs text-red-500 font-semibold mt-1">{emailError}</p>}
+                  </div>
 
-              <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="btn-pill-secondary text-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-pill-primary text-xs"
-                >
-                  {loading ? 'Saving...' : editingSpeaker ? 'Save Profile' : 'Create Speaker'}
-                </button>
-              </div>
-            </form>
+                  {/* Inline OTP Verification Card */}
+                  {otpSent && !isEmailVerified && (
+                    <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100 space-y-3 animate-fade-in">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800">
+                          Enter 6-digit OTP sent to <span className="text-indigo-700 font-semibold">{formData.email}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setOtpSent(false)}
+                          className="text-[11px] font-bold text-slate-500 hover:text-slate-800 underline"
+                        >
+                          Change Email
+                        </button>
+                      </div>
+
+                      <OtpInput
+                        value={otpValue}
+                        onChange={setOtpValue}
+                        hasError={Boolean(otpError)}
+                      />
+
+                      {otpError && <p className="text-xs text-red-500 font-semibold text-center">{otpError}</p>}
+
+                      <div className="flex items-center justify-between gap-3 pt-1">
+                        <OtpTimer initialSeconds={60} onResend={handleSendSpeakerOtp} isResending={sendingOtp} />
+
+                        <button
+                          type="button"
+                          onClick={handleVerifySpeakerOtp}
+                          disabled={verifyingOtp || otpValue.length !== 6}
+                          className="btn-pill-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-md"
+                        >
+                          {verifyingOtp ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Verifying...</span>
+                            </>
+                          ) : (
+                            <span>Verify Code</span>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="soft-label">Keynote / Session Topic</label>
+                    <input
+                      type="text"
+                      value={formData.topic}
+                      onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+                      placeholder="e.g. Autonomous Real-Time Multi-Agent Architectures"
+                      className="soft-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="soft-label">Photo / Avatar URL (Optional)</label>
+                    <input
+                      type="text"
+                      value={formData.avatar_url}
+                      onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
+                      placeholder="Leave blank for automatic stylized avatar"
+                      className="soft-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="soft-label">Biographical Context (for Anchor Cues)</label>
+                    <textarea
+                      rows={3}
+                      value={formData.bio}
+                      onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                      placeholder="Notable achievements, career highlights, book authorship, key talking points..."
+                      className="soft-input resize-none"
+                    />
+                  </div>
+
+                  <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-2.5 border-t border-slate-100">
+                    {!editingSpeaker && !isEmailVerified ? (
+                      <span className="text-[11px] text-amber-700 font-semibold flex items-center gap-1">
+                        ⚠️ Verify speaker email to enable creation
+                      </span>
+                    ) : <span />}
+
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setIsModalOpen(false)}
+                        className="btn-pill-secondary text-xs"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={loading || (!editingSpeaker && !isEmailVerified)}
+                        className="btn-pill-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                      >
+                        {loading ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Creating Speaker...</span>
+                          </>
+                        ) : editingSpeaker ? (
+                          'Save Profile'
+                        ) : (
+                          'Create Speaker'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}
