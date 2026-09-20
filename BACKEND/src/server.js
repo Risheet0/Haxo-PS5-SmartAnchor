@@ -20,6 +20,7 @@ import speakerRoutes from './routes/speakerRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 import registrationRoutes from './routes/registrationRoutes.js';
 
 const app = express();
@@ -60,6 +61,7 @@ app.use('/api/speakers', speakerRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/auth', authRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

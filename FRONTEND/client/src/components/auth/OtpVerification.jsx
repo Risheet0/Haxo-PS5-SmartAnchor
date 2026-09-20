@@ -156,17 +156,6 @@ export default function OtpVerification({
           </button>
         </div>
 
-        {/* Frontend Testing Mode Info Callout */}
-        <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 font-mono text-[11px] space-y-1">
-          <div className="font-bold uppercase tracking-wider flex items-center gap-1.5 text-amber-800">
-            <Info className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>Frontend Test OTP</span>
-          </div>
-          <p className="text-amber-900 font-sans text-[11px] leading-tight">
-            Use test code <strong className="font-mono font-black text-amber-950 bg-amber-200/60 px-1.5 py-0.5 rounded">123456</strong> or any 6-digit number to verify.
-          </p>
-        </div>
-
         {/* Notification & Error Messages */}
         {errorMessage && (
           <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 font-mono text-xs flex items-center justify-between gap-2 animate-fade-in">
