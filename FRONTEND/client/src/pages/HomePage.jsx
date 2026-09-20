@@ -1,13 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  Search,
-  MapPin,
-  Sparkles,
   ArrowRight,
   Compass,
   Users,
-  CheckCircle2,
-  Globe,
   Shield,
   Layers,
   Zap,
@@ -15,49 +10,23 @@ import {
   Trophy,
   Briefcase,
   Calendar,
-  Building2,
-  SlidersHorizontal,
-  User
+  User,
+  CheckCircle2,
+  Globe,
+  Lock
 } from 'lucide-react';
-import {
-  SASM_MOCK_EVENTS,
-  SUPPORTED_CITIES,
-  EVENT_CATEGORIES,
-  sortEventsByLocation
-} from '../services/sasmEventsData';
-import EventCard from '../components/EventCard';
+import { EVENT_CATEGORIES } from '../services/sasmEventsData';
 
 export default function HomePage({
-  selectedCity = 'Ahmedabad',
-  onSelectCity,
   onNavigate,
   currentUser
 }) {
-  const [customCitySearch, setCustomCitySearch] = useState('');
-
-  // Active City for discovery (either selected city or typed city search)
-  const activeCity = customCitySearch.trim() ? customCitySearch.trim() : selectedCity;
-
-  // Apply location priority sorting logic (Prioritizes activeCity while keeping all events)
-  const sortedEvents = sortEventsByLocation(SASM_MOCK_EVENTS, activeCity);
-
-  // Separate into priority location matches vs other location events
-  const priorityCityEvents = sortedEvents.filter(e =>
-    e.city.toLowerCase().trim() === activeCity.toLowerCase().trim()
-  );
-  const otherCityEvents = sortedEvents.filter(e =>
-    e.city.toLowerCase().trim() !== activeCity.toLowerCase().trim()
-  );
-
-  // Featured events subset
-  const featuredEvents = SASM_MOCK_EVENTS.filter(e => e.featured);
-
   // Category navigation handler
-  const handleCategoryClick = (category) => {
+  const handleCategoryClick = () => {
     if (currentUser && currentUser.role === 'user') {
-      onNavigate(`/user`);
+      onNavigate('/user');
     } else {
-      onNavigate(`/events?category=${encodeURIComponent(category)}`);
+      onNavigate('/login');
     }
   };
 
@@ -65,7 +34,7 @@ export default function HomePage({
     <div className="space-y-16 pb-20 font-sans bg-slate-50/50 select-none">
       
       {/* ─────────────────────────────────────────────────────────────
-          1. HERO SECTION (PUBLIC & ROLE-AWARE)
+          1. HERO SECTION (PUBLIC & CLEAN)
           ───────────────────────────────────────────────────────────── */}
       <section className="bg-white border-b border-slate-200 py-16 sm:py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
         <div className="max-w-7xl mx-auto space-y-8 relative z-10">
@@ -83,14 +52,14 @@ export default function HomePage({
               Join Experiences. <span className="text-slate-500">Make Connections.</span>
             </h1>
             <p className="text-base sm:text-lg text-slate-600 font-medium leading-relaxed max-w-3xl">
-              SASM helps people discover and participate in events from different organizers and locations — including technology summits, university festivals, corporate conferences, hackathons, workshops, cultural showcases, and community meetups.
+              SASM is a universal event discovery and management platform for technology summits, college festivals, corporate conferences, hackathons, workshops, cultural celebrations, and sports tournaments across cities.
             </p>
           </div>
 
           {/* Action Callouts: Strictly Role Dependent */}
           <div className="flex flex-wrap items-center gap-3.5 font-mono pt-3">
             {!currentUser ? (
-              /* LOGGED OUT: Only Public Authentication Actions */
+              /* LOGGED OUT: Pure Public Sign In / Get Started Actions */
               <>
                 <button
                   onClick={() => onNavigate('/login')}
@@ -115,26 +84,19 @@ export default function HomePage({
                 </button>
               </>
             ) : currentUser.role === 'user' ? (
-              /* LOGGED IN USER: User Event Discovery Shortcuts */
+              /* LOGGED IN USER: Open Authenticated Dashboard */
               <>
                 <button
                   onClick={() => onNavigate('/user')}
                   className="px-6 py-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm transition active:scale-95 shadow-sm flex items-center gap-2"
                 >
                   <User className="w-4 h-4 text-slate-300" />
-                  <span>Open My User Dashboard</span>
+                  <span>Open User Event Dashboard</span>
                   <ArrowRight className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={() => onNavigate('/events')}
-                  className="px-6 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 font-bold text-xs sm:text-sm transition"
-                >
-                  Explore All Events
                 </button>
               </>
             ) : (
-              /* LOGGED IN MANAGER: Manager Dashboard Shortcut */
+              /* LOGGED IN MANAGER: Open Manager Dashboard */
               <button
                 onClick={() => onNavigate('/manager')}
                 className="px-6 py-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm transition flex items-center gap-2"
@@ -148,173 +110,7 @@ export default function HomePage({
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          2. LOCATION DISCOVERY & SELECTOR
-          ───────────────────────────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
-          
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-500 uppercase tracking-wider">
-              <MapPin className="w-4 h-4 text-slate-700" />
-              <span>LOCATION DISCOVERY</span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-950 uppercase tracking-tight">
-              Where do you want to discover events?
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-600">
-              Select a city or search any location to prioritize events near you. All events across regions remain fully accessible below.
-            </p>
-          </div>
-
-          {/* Search City Input & Quick Select Pills */}
-          <div className="space-y-4">
-            {/* Search Input */}
-            <div className="relative max-w-xl">
-              <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={customCitySearch}
-                onChange={(e) => setCustomCitySearch(e.target.value)}
-                placeholder="Search city or location... (e.g., Ahmedabad, Mumbai, Bengaluru)"
-                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-sans focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-              />
-              {customCitySearch && (
-                <button
-                  onClick={() => setCustomCitySearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-slate-400 hover:text-slate-700"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-
-            {/* Selectable Location Pills */}
-            <div className="flex flex-wrap items-center gap-2 text-xs font-mono pt-2">
-              <span className="text-slate-400 font-bold mr-1">POPULAR LOCATIONS:</span>
-              {SUPPORTED_CITIES.map((city) => {
-                const isSelected = activeCity.toLowerCase().trim() === city.name.toLowerCase().trim();
-                return (
-                  <button
-                    key={city.id}
-                    onClick={() => {
-                      setCustomCitySearch('');
-                      onSelectCity && onSelectCity(city.name);
-                    }}
-                    className={`px-3.5 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 ${
-                      isSelected
-                        ? 'bg-slate-950 text-white border-slate-950 shadow-xs'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
-                    }`}
-                  >
-                    <span>{city.name}</span>
-                    {isSelected && <span className="text-emerald-400 font-black">✓</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────────
-          3. FEATURED EVENTS SECTION
-          ───────────────────────────────────────────────────────────── */}
-      {featuredEvents.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-500 uppercase tracking-wider">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>CURATED SELECTION</span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-950 uppercase tracking-tight mt-0.5">
-                Featured Events
-              </h2>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onNavigate={onNavigate}
-                isFeatured={true}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────
-          4. LOCATION-PRIORITIZED EVENT DISCOVERY
-          ───────────────────────────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-        
-        {/* Priority 1: Recommended near activeCity */}
-        <div className="space-y-6">
-          <div className="flex flex-wrap items-end justify-between gap-4 pb-3 border-b border-slate-200">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
-                <MapPin className="w-4 h-4 text-slate-900" />
-                <span>RECOMMENDED NEAR {activeCity.toUpperCase()}</span>
-              </div>
-              <h2 className="text-xl sm:text-3xl font-black text-slate-950 uppercase tracking-tight mt-1">
-                Events in {activeCity} ({priorityCityEvents.length})
-              </h2>
-            </div>
-          </div>
-
-          {priorityCityEvents.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {priorityCityEvents.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  onNavigate={onNavigate}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="p-8 rounded-2xl bg-white border border-slate-200 font-mono text-center space-y-2">
-              <p className="text-sm font-bold text-slate-800">
-                No events currently scheduled matching "{activeCity}".
-              </p>
-              <p className="text-xs text-slate-500">
-                All events from other locations across regions are displayed below for your discovery.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Priority 2: More Events (Non-matching locations remain visible) */}
-        {otherCityEvents.length > 0 && (
-          <div className="space-y-6 pt-6 border-t border-slate-200">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-500 uppercase tracking-wider">
-                <Globe className="w-4 h-4 text-slate-500" />
-                <span>MORE LOCATIONS &amp; REGIONAL HUBS</span>
-              </div>
-              <h3 className="text-lg sm:text-2xl font-bold text-slate-900 uppercase tracking-tight mt-1">
-                More Events Across Locations ({otherCityEvents.length})
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {otherCityEvents.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  onNavigate={onNavigate}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────────
-          5. EVENT CATEGORIES DISCOVERY
+          2. EVENT CATEGORIES OVERVIEW (INFORMATIONAL ONLY, NO CARDS)
           ───────────────────────────────────────────────────────────── */}
       <section className="bg-white border-y border-slate-200 py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-10">
@@ -323,30 +119,29 @@ export default function HomePage({
               EVENT CATEGORIES
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-950 uppercase tracking-tight">
-              Explore Events By Topic &amp; Format
+              Platform Event Coverage
             </h2>
             <p className="text-xs sm:text-sm text-slate-600">
-              Browse diverse gatherings across technology, academia, corporate business, arts, sports, and community networks.
+              Sign in to browse active events across technology, academia, corporate business, arts, sports, and community networks.
             </p>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 font-mono text-xs">
             {EVENT_CATEGORIES.filter(c => c !== 'ALL').map((category) => (
-              <button
+              <div
                 key={category}
-                onClick={() => handleCategoryClick(category)}
-                className="p-4 rounded-2xl bg-slate-50 hover:bg-slate-950 hover:text-white border border-slate-200 text-slate-900 font-bold text-center transition-all duration-200 flex flex-col items-center justify-center gap-2 group shadow-xs"
+                className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 font-bold text-center flex flex-col items-center justify-center gap-2 shadow-xs"
               >
                 <CategoryIcon category={category} />
-                <span className="group-hover:scale-105 transition-transform">{category}</span>
-              </button>
+                <span>{category}</span>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          6. HOW SASM HELPS USERS
+          3. HOW SASM HELPS USERS
           ───────────────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         <div className="text-center max-w-2xl mx-auto space-y-2">
@@ -365,7 +160,7 @@ export default function HomePage({
             </div>
             <h3 className="text-xl font-bold text-slate-950">Discover</h3>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Find events based on location, category, date, and interests. Prioritize events near your city while keeping full visibility over regional gatherings.
+              Log in to search events based on location, category, date, and interests. Prioritize events near your city while keeping full visibility over regional gatherings.
             </p>
           </div>
 
@@ -392,7 +187,7 @@ export default function HomePage({
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          7. BOTTOM CALL TO ACTION BANNER
+          4. BOTTOM CALL TO ACTION BANNER
           ───────────────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-slate-950 text-white rounded-3xl p-8 sm:p-12 space-y-6 relative overflow-hidden shadow-md">
@@ -404,7 +199,7 @@ export default function HomePage({
               Get Started With SASM
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Discover events across regions, join vibrant technology communities, or manage your organization's event operations with live stage controls.
+              Sign in to discover events across regions, join vibrant technology communities, or manage your organization's event operations with live stage controls.
             </p>
           </div>
 
@@ -429,7 +224,7 @@ export default function HomePage({
                 onClick={() => onNavigate('/user')}
                 className="px-6 py-3.5 rounded-xl bg-white text-slate-950 font-bold hover:bg-slate-100 transition shadow-xs"
               >
-                Go to User Dashboard &rarr;
+                Go to User Event Dashboard &rarr;
               </button>
             ) : (
               <button

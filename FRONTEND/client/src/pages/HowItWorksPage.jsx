@@ -3,7 +3,7 @@ import { User, Shield, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export default function HowItWorksPage({ onNavigate }) {
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 space-y-12 font-sans">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 space-y-12 font-sans select-none">
       <div className="space-y-3 border-b border-slate-200 pb-8 text-center sm:text-left">
         <span className="text-xs font-mono font-bold uppercase tracking-widest text-slate-500">
           SYSTEM WORKFLOW
@@ -12,20 +12,20 @@ export default function HowItWorksPage({ onNavigate }) {
           How SASM Works
         </h1>
         <p className="text-base sm:text-lg text-slate-600 font-medium max-w-2xl">
-          A streamlined platform architecture connecting TechFest participants and event managers.
+          A streamlined platform architecture connecting event participants and event managers.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-sans">
         {/* For Attendees */}
-        <div className="p-8 rounded-3xl bg-white border border-slate-200 space-y-6">
+        <div className="p-8 rounded-3xl bg-white border border-slate-200 space-y-6 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-slate-900 text-white">
               <User className="w-6 h-6" />
             </div>
             <div>
               <span className="text-xs font-mono font-bold text-slate-500 uppercase">ROLE 1</span>
-              <h2 className="text-xl font-bold text-slate-950">For Users &amp; Students</h2>
+              <h2 className="text-xl font-bold text-slate-950">For Users &amp; Attendees</h2>
             </div>
           </div>
 
@@ -36,7 +36,7 @@ export default function HowItWorksPage({ onNavigate }) {
               </div>
               <div>
                 <strong className="text-slate-900 block">Discover Events</strong>
-                <span>Browse upcoming TechFests and hackathons filtered by Ahmedabad colleges and companies.</span>
+                <span>Browse upcoming events, hackathons, and conferences filtered by your location and topic interests.</span>
               </div>
             </div>
 
@@ -46,7 +46,7 @@ export default function HowItWorksPage({ onNavigate }) {
               </div>
               <div>
                 <strong className="text-slate-900 block">One-Click Registration</strong>
-                <span>Sign in and join events, hackathons, or workshops with instant ticket confirmations.</span>
+                <span>Sign in and join events, hackathons, or workshops with instant registration confirmations.</span>
               </div>
             </div>
 
@@ -62,15 +62,15 @@ export default function HowItWorksPage({ onNavigate }) {
           </div>
 
           <button
-            onClick={() => onNavigate('/events')}
+            onClick={() => onNavigate('/login')}
             className="w-full py-3 rounded-xl bg-slate-950 text-white font-mono font-bold text-xs hover:bg-slate-800 transition"
           >
-            Browse TechFest Events
+            Sign In to Discover Events
           </button>
         </div>
 
         {/* For Managers */}
-        <div className="p-8 rounded-3xl bg-white border border-slate-200 space-y-6">
+        <div className="p-8 rounded-3xl bg-white border border-slate-200 space-y-6 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-slate-900 text-white">
               <Shield className="w-6 h-6" />
@@ -88,7 +88,7 @@ export default function HowItWorksPage({ onNavigate }) {
               </div>
               <div>
                 <strong className="text-slate-900 block">Publish Event Details</strong>
-                <span>Set up TechFest agendas, speaker profiles, and technical requirements.</span>
+                <span>Set up event agendas, speaker profiles, and technical requirements.</span>
               </div>
             </div>
 
@@ -115,9 +115,9 @@ export default function HowItWorksPage({ onNavigate }) {
 
           <button
             onClick={() => onNavigate('/manager')}
-            className="w-full py-3 rounded-xl bg-indigo-50 text-indigo-950 border border-indigo-200 font-mono font-bold text-xs hover:bg-indigo-100 transition"
+            className="w-full py-3 rounded-xl bg-slate-100 text-slate-900 border border-slate-200 font-mono font-bold text-xs hover:bg-slate-200 transition"
           >
-            Access Manager Dashboard &rarr;
+            Access Manager Console &rarr;
           </button>
         </div>
       </div>
