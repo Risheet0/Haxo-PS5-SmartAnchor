@@ -1,0 +1,16 @@
+{
+  "name": "smart-anchor-root",
+  "version": "1.0.0",
+  "description": "Smart Anchor & Stage Flow Management System (Frontend + Backend)",
+  "private": true,
+  "scripts": {
+    "start": "npm run dev",
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"magenta,cyan\" \"npm run server\" \"npm run client\"",
+    "server": "npm run start --prefix BACKEND",
+    "client": "npm run dev --prefix FRONTEND/client",
+    "install:all": "npm install && npm install --prefix BACKEND && npm install --prefix FRONTEND/client"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
