@@ -62,7 +62,7 @@ export function validateSignupData({ name, email, password, confirmPassword, rol
   }
 
   if (!role || (role !== 'user' && role !== 'manager')) {
-    errors.role = 'Please select an account type (User or Manager).';
+    errors.role = 'Please select an account type (User or Host).';
   }
 
   return {

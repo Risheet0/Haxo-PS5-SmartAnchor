@@ -419,7 +419,7 @@ export default function App() {
         >
           <div className="max-w-7xl mx-auto px-4 pt-4">
             <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-mono text-xs font-bold flex items-center justify-between">
-              <span>⚠️ Access Blocked: Manager access required. You have been redirected to your User Dashboard.</span>
+              <span>⚠️ Access Blocked: Host access required. You have been redirected to your User Dashboard.</span>
               <button onClick={() => setSecurityNotice(null)} className="text-amber-700 hover:underline">Dismiss</button>
             </div>
           </div>
@@ -451,7 +451,7 @@ export default function App() {
         <div className="bg-slate-950 text-white px-4 py-1.5 flex items-center justify-between text-xs font-mono border-b border-slate-800">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-bold">SASM MANAGER CONSOLE</span>
+            <span className="font-bold">SASM HOST CONSOLE</span>
             <span className="text-slate-400">• {event?.name || 'TECHFEST 2026'} ({currentUser.name})</span>
           </div>
 

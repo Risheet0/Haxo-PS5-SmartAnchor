@@ -60,16 +60,16 @@ export default function LearnPage({ onNavigate }) {
     },
     {
       id: 'manager-guide',
-      title: 'How to Use SASM Manager Dashboard',
-      category: 'Manager Guide',
+      title: 'How to Use SASM Host Dashboard',
+      category: 'Host Guide',
       readTime: '8 min read',
       icon: Shield,
       description: 'Complete walkthrough for event hosts: operating the live control room, session health telemetry, stage teleprompter, delay cascading, and agenda setup.',
       steps: [
         {
           num: '01',
-          title: 'Sign In to Manager Console',
-          detail: 'Sign in selecting the "Event Manager" role to open the dedicated SmartStage live control room (/manager).'
+          title: 'Sign In to Host Console',
+          detail: 'Sign in selecting the "Event Host" role to open the dedicated SmartStage live control room (/manager).'
         },
         {
           num: '02',
@@ -104,7 +104,7 @@ export default function LearnPage({ onNavigate }) {
         {
           num: '01',
           title: 'Strict Role Authorization',
-          detail: 'Role-based access control enforces 100% separation: Users access event discovery only (/user), while Managers access stage execution controls only (/manager).'
+          detail: 'Role-based access control enforces 100% separation: Users access event discovery only (/user), while Hosts access stage execution controls only (/manager).'
         },
         {
           num: '02',
@@ -342,7 +342,7 @@ export default function LearnPage({ onNavigate }) {
                 }}
                 className="px-6 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold transition flex items-center gap-1.5"
               >
-                <span>{selectedGuide.id === 'manager-guide' ? 'Open Manager Console' : 'Sign In to Try Portal'}</span>
+                <span>{selectedGuide.id === 'manager-guide' ? 'Open Host Console' : 'Sign In to Try Portal'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

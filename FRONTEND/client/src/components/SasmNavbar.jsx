@@ -52,10 +52,10 @@ export default function SasmNavbar({
       { label: 'Saved Events', path: '/user', icon: Bookmark }
     ];
   } else if (currentUser.role === 'manager') {
-    // 3. MANAGER LOGGED IN STATE: Manager-specific navigation ONLY
+    // 3. HOST LOGGED IN STATE: Host-specific navigation ONLY
     navLinks = [
       { label: 'Home', path: '/', icon: Compass },
-      { label: 'Manager Dashboard', path: '/manager', icon: Shield }
+      { label: 'Host Dashboard', path: '/manager', icon: Shield }
     ];
   }
 

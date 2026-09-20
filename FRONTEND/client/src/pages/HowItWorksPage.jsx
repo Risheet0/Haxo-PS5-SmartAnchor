@@ -69,7 +69,7 @@ export default function HowItWorksPage({ onNavigate }) {
           </button>
         </div>
 
-        {/* For Managers */}
+        {/* For Hosts */}
         <div className="p-8 rounded-3xl bg-white border border-slate-200 space-y-6 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-slate-900 text-white">
@@ -77,7 +77,7 @@ export default function HowItWorksPage({ onNavigate }) {
             </div>
             <div>
               <span className="text-xs font-mono font-bold text-slate-500 uppercase">ROLE 2</span>
-              <h2 className="text-xl font-bold text-slate-950">For Event Managers</h2>
+              <h2 className="text-xl font-bold text-slate-950">For Event Hosts</h2>
             </div>
           </div>
 
@@ -117,7 +117,7 @@ export default function HowItWorksPage({ onNavigate }) {
             onClick={() => onNavigate('/manager')}
             className="w-full py-3 rounded-xl bg-slate-100 text-slate-900 border border-slate-200 font-mono font-bold text-xs hover:bg-slate-200 transition"
           >
-            Access Manager Console &rarr;
+            Access Host Console &rarr;
           </button>
         </div>
       </div>
