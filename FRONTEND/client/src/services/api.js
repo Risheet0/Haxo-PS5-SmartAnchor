@@ -97,7 +97,10 @@ export const api = {
           room: eventData.room || 'Main Auditorium',
           city: eventData.city || 'Ahmedabad',
           location: eventData.location || `${eventData.venue || 'Grand Convention Center'}, ${eventData.city || 'Ahmedabad'}`,
+          isMultiDay: Boolean(eventData.isMultiDay || eventData.is_multi_day || (eventData.daySchedules && eventData.daySchedules.length > 1)),
+          totalDays: eventData.totalDays || eventData.total_days || (eventData.daySchedules?.length || 1),
           date: eventData.date || new Date().toISOString().split('T')[0],
+          endDate: eventData.endDate || eventData.end_date || eventData.date || new Date().toISOString().split('T')[0],
           startTime: eventData.startTime || eventData.start_time || '09:00 AM',
           endTime: eventData.endTime || eventData.end_time || '06:00 PM',
           eventType: eventData.eventType || 'Conference',
@@ -109,7 +112,8 @@ export const api = {
           tags: eventData.tags || ['Conference', 'Summit'],
           capacity: Number(eventData.capacity) || 500,
           featured: true,
-          status: 'LIVE'
+          status: 'LIVE',
+          daySchedules: eventData.daySchedules || eventData.day_schedules || []
         };
         const updated = [newEv, ...all];
         setMockStore('sasm_all_events', updated);

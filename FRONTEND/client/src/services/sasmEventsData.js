@@ -1,6 +1,6 @@
 /**
  * SASM Platform - Universal Event Discovery & Management Dataset
- * Supports Technology, Cultural, Sports, Business, Educational, and Community Events
+ * Supports Single-Day and Multi-Day Events across Technology, Cultural, Sports, Business, etc.
  */
 
 export const EVENT_CATEGORIES = [
@@ -50,22 +50,54 @@ export const SASM_MOCK_EVENTS = [
     institution: 'Grand Convention Center',
     location: 'SG Highway, Ahmedabad',
     city: 'Ahmedabad',
-    venue: 'Main Auditorium & Expo Hall A',
+    venue: 'Grand Convention Center (Main Auditorium & Expo Hall A)',
+    isMultiDay: true,
+    totalDays: 3,
     date: '2026-09-20',
+    endDate: '2026-09-22',
     startTime: '09:00 AM',
     endTime: '06:00 PM',
-    eventType: 'Conference',
+    eventType: 'Conference & Summit',
     category: 'Technology',
-    description: 'Premier technology gathering in Ahmedabad bringing together engineering students, researchers, and tech leaders to explore AI, robotics, and edge computing.',
+    description: 'Premier 3-day technology gathering in Ahmedabad bringing together engineering students, researchers, and tech leaders to explore AI architectures, robotics, cloud resilience, and agentic workflows.',
     eligibility: 'Open to Students, Developers & Tech Professionals',
     registrationStatus: 'OPEN',
     registrationDeadline: '2026-09-25',
     image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
-    tags: ['AI', 'Robotics', 'Edge Computing', 'Keynote'],
+    tags: ['AI', 'Robotics', 'Edge Computing', 'Keynote', '3-Day Summit'],
     contactEmail: 'contact@sasm-events.org',
     contactPhone: '+91 98765 43210',
     capacity: 1200,
-    featured: true
+    featured: true,
+    daySchedules: [
+      {
+        day: 1,
+        date: '2026-09-20',
+        label: 'Day 1: Inauguration & AI Keynote Track',
+        venue: 'Grand Convention Center',
+        room: 'Main Auditorium & Expo Hall A',
+        time: '09:00 AM - 06:00 PM',
+        highlight: 'Ceremonial Address, DeepMind Keynote, and AI Innovation Workshops'
+      },
+      {
+        day: 2,
+        date: '2026-09-21',
+        label: 'Day 2: Developer Sprints & Technical Tracks',
+        venue: 'Tech Innovation Park Arena',
+        room: 'Lab 3 & Workshop Studio',
+        time: '09:30 AM - 07:00 PM',
+        highlight: 'Hands-on Agentic Robotics, Cloud Scaling Masterclasses & Lightning Demos'
+      },
+      {
+        day: 3,
+        date: '2026-09-22',
+        label: 'Day 3: Startup Pitches & Grand Valedictory',
+        venue: 'Grand Convention Center',
+        room: 'Open Air Amphitheatre',
+        time: '10:00 AM - 05:30 PM',
+        highlight: 'Top 10 Jury Pitching, Cash Prize Distribution & Closing Ceremony'
+      }
+    ]
   },
   {
     id: 'sasm-ev-2',
@@ -75,22 +107,45 @@ export const SASM_MOCK_EVENTS = [
     institution: 'Nirma University',
     location: 'Sarkhej-Gandhinagar Highway, Ahmedabad',
     city: 'Ahmedabad',
-    venue: 'Nirma Campus Auditorium & Sports Grounds',
+    venue: 'Nirma Campus (Auditorium & Sports Complex)',
+    isMultiDay: true,
+    totalDays: 2,
     date: '2026-10-05',
+    endDate: '2026-10-06',
     startTime: '09:30 AM',
     endTime: '08:00 PM',
     eventType: 'Cultural & Tech Festival',
     category: 'Cultural',
-    description: 'Annual flagship university festival featuring music concerts, hackathons, robotics obstacle runs, literary debates, and cultural showcases.',
+    description: 'Annual 2-day flagship university festival featuring music concerts, hackathons, robotics obstacle runs, literary debates, and cultural showcases.',
     eligibility: 'Undergraduate & Postgraduate Students from all streams',
     registrationStatus: 'OPEN',
     registrationDeadline: '2026-10-01',
     image: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&w=1200&q=80',
-    tags: ['Music', 'Cultural', 'Hackathon', 'Debate'],
+    tags: ['Music', 'Cultural', 'Hackathon', 'Debate', '2-Day Fest'],
     contactEmail: 'mindsparks@nirmauni.ac.in',
     contactPhone: '+91 98234 11223',
     capacity: 2500,
-    featured: true
+    featured: true,
+    daySchedules: [
+      {
+        day: 1,
+        date: '2026-10-05',
+        label: 'Day 1: Tech Obstacle Arena & Literary Battles',
+        venue: 'Nirma University Campus',
+        room: 'Main Auditorium & Engineering Block',
+        time: '09:30 AM - 06:00 PM',
+        highlight: 'RoboWars, Coding Sprints, Parliamentary Debates & Project Displays'
+      },
+      {
+        day: 2,
+        date: '2026-10-06',
+        label: 'Day 2: Music Concert & Cultural Grand Gala',
+        venue: 'Nirma University Grounds',
+        room: 'Open Air Amphitheatre',
+        time: '10:00 AM - 10:00 PM',
+        highlight: 'Dance Troupes, Celebrity Star Night Concert & Trophy Celebrations'
+      }
+    ]
   },
   {
     id: 'sasm-ev-3',
@@ -101,12 +156,15 @@ export const SASM_MOCK_EVENTS = [
     location: 'Ashram Road, Ahmedabad',
     city: 'Ahmedabad',
     venue: 'GCCI Main Convention Hall',
+    isMultiDay: true,
+    totalDays: 2,
     date: '2026-10-15',
+    endDate: '2026-10-16',
     startTime: '10:00 AM',
     endTime: '05:00 PM',
     eventType: 'Exhibition & Networking',
     category: 'Business',
-    description: 'High-level business symposium connecting regional startups, venture capital investors, enterprise leaders, and government policy makers.',
+    description: 'High-level 2-day business symposium connecting regional startups, venture capital investors, enterprise leaders, and government policy makers.',
     eligibility: 'Entrepreneurs, Founders, Investors & Business Executives',
     registrationStatus: 'OPEN',
     registrationDeadline: '2026-10-10',
@@ -115,7 +173,27 @@ export const SASM_MOCK_EVENTS = [
     contactEmail: 'expo@gcci.org',
     contactPhone: '+91 99112 33445',
     capacity: 800,
-    featured: false
+    featured: false,
+    daySchedules: [
+      {
+        day: 1,
+        date: '2026-10-15',
+        label: 'Day 1: Startup Pavilion & Investor Matchmaking',
+        venue: 'GCCI Exhibition Complex',
+        room: 'Hall A (Expo Floor)',
+        time: '10:00 AM - 05:00 PM',
+        highlight: '100+ Startup Booths, Speed Pitching & Angel Investor Roundtables'
+      },
+      {
+        day: 2,
+        date: '2026-10-16',
+        label: 'Day 2: Policy Panels & Enterprise Summit',
+        venue: 'GCCI Convention Center',
+        room: 'Executive Grand Ballroom',
+        time: '10:00 AM - 04:30 PM',
+        highlight: 'State Industry Leaders Panel, Trade Agreements & Networking Luncheon'
+      }
+    ]
   },
   {
     id: 'sasm-ev-4',
@@ -125,22 +203,54 @@ export const SASM_MOCK_EVENTS = [
     institution: 'IIT Gandhinagar Campus',
     location: 'Palaj, Gandhinagar',
     city: 'Gandhinagar',
-    venue: 'IIT Sports Complex Arena',
+    venue: 'IIT Sports Complex Arena & Grounds',
+    isMultiDay: true,
+    totalDays: 3,
     date: '2026-10-22',
+    endDate: '2026-10-24',
     startTime: '08:00 AM',
     endTime: '07:00 PM',
     eventType: 'Sports Tournament',
     category: 'Sports',
-    description: 'Regional inter-collegiate sports championship featuring athletics, basketball, football, chess, badminton, and table tennis tournaments.',
+    description: 'Regional 3-day inter-collegiate sports championship featuring athletics, basketball, football, chess, badminton, and table tennis tournaments.',
     eligibility: 'College Students with valid institution ID cards',
     registrationStatus: 'OPEN',
     registrationDeadline: '2026-10-18',
     image: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80',
-    tags: ['Athletics', 'Basketball', 'Football', 'Tournaments'],
+    tags: ['Athletics', 'Basketball', 'Football', 'Tournaments', '3-Day Championship'],
     contactEmail: 'sports@iitgn.ac.in',
     contactPhone: '+91 97788 44332',
     capacity: 1500,
-    featured: true
+    featured: true,
+    daySchedules: [
+      {
+        day: 1,
+        date: '2026-10-22',
+        label: 'Day 1: Track & Field Athletics & Badminton',
+        venue: 'IIT Sports Complex Arena',
+        room: 'Indoor Badminton Courts & Track Stadium',
+        time: '08:00 AM - 06:00 PM',
+        highlight: 'Opening March Past, 100m/400m Heats, and Badminton Knockouts'
+      },
+      {
+        day: 2,
+        date: '2026-10-23',
+        label: 'Day 2: Basketball, Table Tennis & Football',
+        venue: 'IIT Sports Complex',
+        room: 'Outdoor Basketball Courts & Football Stadium',
+        time: '08:30 AM - 07:00 PM',
+        highlight: 'Inter-College Football Quarterfinals & Basketball Showdowns'
+      },
+      {
+        day: 3,
+        date: '2026-10-24',
+        label: 'Day 3: Championship Finals & Medal Ceremony',
+        venue: 'IIT Main Sports Stadium',
+        room: 'Center Arena',
+        time: '09:00 AM - 05:00 PM',
+        highlight: 'Grand Final Matches, Gold Medal Felicitation & Closing Trophies'
+      }
+    ]
   },
   {
     id: 'sasm-ev-5',
@@ -151,12 +261,15 @@ export const SASM_MOCK_EVENTS = [
     location: 'Alkapuri, Vadodara',
     city: 'Vadodara',
     venue: 'Alkapuri Design Hub',
+    isMultiDay: false,
+    totalDays: 1,
     date: '2026-11-01',
+    endDate: '2026-11-01',
     startTime: '10:00 AM',
     endTime: '04:00 PM',
     eventType: 'Interactive Workshop',
     category: 'Workshop',
-    description: 'Hands-on design workshop covering design systems, micro-interactions, Figma prototyping, and user accessibility standards.',
+    description: 'Hands-on intensive single-day design workshop covering design systems, micro-interactions, Figma prototyping, and user accessibility standards.',
     eligibility: 'Product Designers, UI/UX Enthusiasts & Students',
     registrationStatus: 'CLOSING SOON',
     registrationDeadline: '2026-10-28',
@@ -175,22 +288,45 @@ export const SASM_MOCK_EVENTS = [
     institution: 'Bandra-Kurla Complex Tech Arena',
     location: 'BKC, Mumbai',
     city: 'Mumbai',
-    venue: 'BKC Convention Center',
+    venue: 'BKC Convention Center & Innovation Lab',
+    isMultiDay: true,
+    totalDays: 2,
     date: '2026-11-10',
+    endDate: '2026-11-11',
     startTime: '09:00 AM',
     endTime: '09:00 PM',
     eventType: '36-Hour Hackathon',
     category: 'Hackathon',
-    description: 'Nationwide hackathon focused on next-generation digital payments, open banking APIs, smart contracts, and decentralized finance.',
+    description: 'Nationwide 2-day hackathon focused on next-generation digital payments, open banking APIs, smart contracts, and decentralized finance.',
     eligibility: 'Developers, FinTech Enthusiasts & Engineering Students',
     registrationStatus: 'OPEN',
     registrationDeadline: '2026-11-05',
     image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
-    tags: ['FinTech', 'Web3', 'Blockchain', 'APIs'],
+    tags: ['FinTech', 'Web3', 'Blockchain', 'APIs', 'Hackathon'],
     contactEmail: 'hackathon@fintechmumbai.org',
     contactPhone: '+91 98200 11223',
     capacity: 2000,
-    featured: true
+    featured: true,
+    daySchedules: [
+      {
+        day: 1,
+        date: '2026-11-10',
+        label: 'Day 1: Problem Statement Reveal & 24hr Coding Kickoff',
+        venue: 'BKC Convention Center',
+        room: 'Grand Hack Arena & Mentorship Pods',
+        time: '09:00 AM - Overnight',
+        highlight: 'API Briefings, Architecture Checkpoints & Midnight Code Review'
+      },
+      {
+        day: 2,
+        date: '2026-11-11',
+        label: 'Day 2: Final Demos, Jury Evaluation & Awards',
+        venue: 'BKC Tech Center',
+        room: 'Main Stage Auditorium',
+        time: '08:00 AM - 09:00 PM',
+        highlight: 'Top 8 Live Prototype Demos, Venture Grant Presentations & Celebrations'
+      }
+    ]
   }
 ];
 
