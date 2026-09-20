@@ -151,7 +151,24 @@ async function runTests() {
       }, 3000);
     });
 
-    // 13. Clean up test activity
+    // 13. Auth & OTP Endpoints (Brevo Email & OTP Security)
+    const sendOtpRes = await request('POST', '/api/auth/send-otp', { email: 'test.otp.user@example.com' });
+    assert('Send OTP API (POST /api/auth/send-otp)', sendOtpRes.status === 200 && sendOtpRes.data?.success);
+
+    const cooldownRes = await request('POST', '/api/auth/send-otp', { email: 'test.otp.user@example.com' });
+    assert('OTP Resend 60-Second Cooldown (POST /api/auth/send-otp)', cooldownRes.status === 429 && !cooldownRes.data?.success);
+
+    const invalidOtpRes = await request('POST', '/api/auth/verify-otp', { email: 'test.otp.user@example.com', otp: '000000' });
+    assert('Invalid OTP Verification (POST /api/auth/verify-otp)', invalidOtpRes.status === 400 && !invalidOtpRes.data?.success);
+
+    const completeSignupRes = await request('POST', '/api/auth/complete-signup', {
+      name: 'Test OTP Attendee',
+      email: 'test.otp.user@example.com',
+      role: 'user'
+    });
+    assert('Complete Signup API (POST /api/auth/complete-signup)', completeSignupRes.status === 200 && completeSignupRes.data?.user?.email_verified);
+
+    // 14. Clean up test activity
     await request('DELETE', `/api/agenda/${testActId}`);
     assert('Delete Agenda Item (DELETE /api/agenda/:id)', true);
 
