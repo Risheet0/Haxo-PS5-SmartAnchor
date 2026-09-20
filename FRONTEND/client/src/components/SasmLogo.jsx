@@ -39,15 +39,15 @@ export default function SasmLogo({
 
       {/* SASM Wordmark & Tagline */}
       {variant !== 'compact' && (
-        <div className="flex flex-col leading-none">
-          <span className={`font-mono font-black tracking-tighter ${sizeClasses.text} ${
+        <div className="flex flex-col justify-center">
+          <span className={`font-mono font-black tracking-tight leading-none ${sizeClasses.text} ${
             isDark ? 'text-white' : 'text-slate-950'
           }`}>
             SASM
           </span>
-          <span className={`font-mono font-bold uppercase tracking-widest ${sizeClasses.sub} ${
+          <span className={`font-mono font-bold uppercase tracking-widest leading-none ${sizeClasses.sub} ${
             isDark ? 'text-slate-400' : 'text-slate-500'
-          }`}>
+          } mt-0.5`}>
             EVENT PLATFORM
           </span>
         </div>
