@@ -32,28 +32,10 @@ function getTransporter() {
  */
 export async function sendMail({ to, subject, html, text }) {
   const senderEmail = process.env.SENDER_EMAIL || process.env.SMTP_USER || 'ddoinfo098@gmail.com';
-  const senderName = process.env.SENDER_NAME || 'SASM';
+  const senderName = process.env.SENDER_NAME || 'SASM Platform';
   const from = `"${senderName}" <${senderEmail}>`;
 
-  // 1. Try Nodemailer Real SMTP (smtp.gmail.com:465)
-  const transporter = getTransporter();
-  if (transporter) {
-    try {
-      const info = await transporter.sendMail({
-        from,
-        to,
-        subject,
-        html,
-        text
-      });
-      console.log(`[SMTP Mail Service] ✅ Real email delivered to ${to} via SMTP (MessageId: ${info.messageId})`);
-      return { success: true, method: 'smtp', messageId: info.messageId };
-    } catch (err) {
-      console.error(`[SMTP Mail Service] ❌ SMTP delivery failed:`, err.message);
-    }
-  }
-
-  // 2. Try Brevo REST API Fallback
+  // 1. Try Brevo REST API Primary (High Deliverability Transactional Relay)
   const brevoApiKey = process.env.BREVO_API_KEY;
   if (brevoApiKey && brevoApiKey !== 'your_brevo_api_key_here') {
     try {
@@ -68,7 +50,8 @@ export async function sendMail({ to, subject, html, text }) {
           sender: { name: senderName, email: senderEmail },
           to: [{ email: to }],
           subject,
-          htmlContent: html
+          htmlContent: html,
+          textContent: text || 'Your SASM verification code'
         })
       });
       const data = await res.json();
@@ -76,13 +59,31 @@ export async function sendMail({ to, subject, html, text }) {
         console.log(`[Brevo Mail Service] ✅ Email delivered to ${to} via Brevo API (MessageId: ${data.messageId})`);
         return { success: true, method: 'brevo', messageId: data.messageId };
       }
+      console.warn(`[Brevo Mail Service] ⚠️ Brevo API non-200 response:`, data);
     } catch (err) {
       console.error(`[Brevo Mail Service] ❌ Brevo API delivery failed:`, err.message);
     }
   }
 
-  console.warn(`\n[Mail Service] ⚠️ SMTP_PASS is not configured in BACKEND/.env.`);
-  console.warn(`[Mail Service] 📧 Set SMTP_PASS=your_gmail_app_password in BACKEND/.env to enable instant inbox delivery to ${to}.\n`);
+  // 2. Fallback to Nodemailer Gmail SMTP (smtp.gmail.com:465)
+  const transporter = getTransporter();
+  if (transporter) {
+    try {
+      const info = await transporter.sendMail({
+        from,
+        to,
+        subject,
+        html,
+        text
+      });
+      console.log(`[SMTP Mail Service] ✅ Email delivered to ${to} via SMTP (MessageId: ${info.messageId})`);
+      return { success: true, method: 'smtp', messageId: info.messageId };
+    } catch (err) {
+      console.error(`[SMTP Mail Service] ❌ SMTP delivery failed:`, err.message);
+    }
+  }
+
+  console.warn(`\n[Mail Service] ⚠️ Email services unconfigured or failing.`);
   return { success: true, method: 'unconfigured' };
 }
 

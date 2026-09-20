@@ -13,6 +13,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 import { initDB } from './config/db.js';
+import { connectMongoDB } from './config/mongodb.js';
 import { initSocketService } from './services/socketService.js';
 import eventRoutes from './routes/eventRoutes.js';
 import agendaRoutes from './routes/agendaRoutes.js';
@@ -49,6 +50,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'healthy',
     service: 'Smart Anchor & Stage Flow Management System',
+    mongodb_uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/sasm_database',
     timestamp: new Date().toISOString()
   });
 });
@@ -81,9 +83,11 @@ app.use((req, res) => {
 const startServer = async () => {
   try {
     await initDB();
+    await connectMongoDB();
     server.listen(PORT, () => {
       console.log(`\n==================================================`);
       console.log(`🎙️  Smart Anchor Backend Online on http://localhost:${PORT}`);
+      console.log(`🍃  MongoDB Database: ${process.env.MONGODB_URI || 'mongodb://localhost:27017/sasm_database'}`);
       console.log(`⚡  Socket.IO Real-time Hub active`);
       console.log(`🤖  Gemini AI Synthesis Service initialized`);
       console.log(`==================================================\n`);

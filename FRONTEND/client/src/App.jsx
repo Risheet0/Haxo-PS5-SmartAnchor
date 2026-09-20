@@ -66,6 +66,19 @@ export default function App() {
     data: null
   });
 
+  const handleLogout = () => {
+    localStorage.removeItem('sasm_user');
+    setCurrentUser(null);
+    setSecurityNotice(null);
+    setSpeakerConsoleState({
+      loading: false,
+      error: null,
+      status: 200,
+      data: null
+    });
+    handleNavigate('/login');
+  };
+
   // Sync / verify session from backend on page refresh (F5)
   useEffect(() => {
     const verifySession = async () => {
@@ -75,6 +88,8 @@ export default function App() {
           if (res && res.success && res.user) {
             setCurrentUser(res.user);
             localStorage.setItem('sasm_user', JSON.stringify(res.user));
+          } else if (res && (res.status === 401 || res.success === false)) {
+            handleLogout();
           }
         } catch (e) {
           // Keep local state if server unreachable
@@ -94,13 +109,6 @@ export default function App() {
   const handleLoginSuccess = (userSession) => {
     setCurrentUser(userSession);
     setSecurityNotice(null);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('sasm_user');
-    setCurrentUser(null);
-    setSecurityNotice(null);
-    handleNavigate('/');
   };
 
   useEffect(() => {

@@ -42,7 +42,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
         role: selectedRole
       });
 
-      if (res && res.user) {
+      if (res && res.success && res.user) {
         const userSession = res.user;
         localStorage.setItem('sasm_user', JSON.stringify(userSession));
         if (onLoginSuccess) {
@@ -58,7 +58,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
           onNavigate('/user');
         }
       } else {
-        setErrorMessage(res?.message || 'Invalid login credentials. Please check your email and password.');
+        setErrorMessage(res?.message || 'Invalid email or password.');
       }
     } catch (err) {
       console.error('Login error:', err);

@@ -530,22 +530,38 @@ export const initDB = async () => {
     console.log('[DB] Existing SQLite dataset detected. Retaining state.');
   }
 
-  // Ensure default speaker accounts exist for test verification
+  // Ensure default speaker and manager accounts exist for test verification
   try {
     const risheetUser = await dbGet(`SELECT id FROM users WHERE LOWER(email) = 'risheet@example.com'`);
     if (!risheetUser) {
       await dbRun(
-        `INSERT INTO users (name, email, role, event_id, temp_password, email_verified, created_at)
-         VALUES ('Risheet', 'risheet@example.com', 'speaker', 1, 'Spk-123456', 1, ?)`,
+        `INSERT INTO users (name, email, role, event_id, temp_password, password_hash, email_verified, created_at)
+         VALUES ('Risheet', 'risheet@example.com', 'speaker', 1, 'CorrectPassword123', 'CorrectPassword123', 1, ?)`,
         [new Date().toISOString()]
+      );
+    } else {
+      await dbRun(
+        `UPDATE users SET temp_password = 'CorrectPassword123', password_hash = 'CorrectPassword123' WHERE LOWER(email) = 'risheet@example.com'`
       );
     }
     const speakerBUser = await dbGet(`SELECT id FROM users WHERE LOWER(email) = 'speakerb@example.com'`);
     if (!speakerBUser) {
       await dbRun(
-        `INSERT INTO users (name, email, role, event_id, temp_password, email_verified, created_at)
-         VALUES ('Speaker B', 'speakerb@example.com', 'speaker', 2, 'Spk-654321', 1, ?)`,
+        `INSERT INTO users (name, email, role, event_id, temp_password, password_hash, email_verified, created_at)
+         VALUES ('Speaker B', 'speakerb@example.com', 'speaker', 2, 'Spk-654321', 'Spk-654321', 1, ?)`,
         [new Date().toISOString()]
+      );
+    }
+    const managerUser = await dbGet(`SELECT id FROM users WHERE LOWER(email) = 'manager@example.com'`);
+    if (!managerUser) {
+      await dbRun(
+        `INSERT INTO users (name, email, role, event_id, temp_password, password_hash, email_verified, created_at)
+         VALUES ('Event Manager', 'manager@example.com', 'manager', 1, 'CorrectPassword123', 'CorrectPassword123', 1, ?)`,
+        [new Date().toISOString()]
+      );
+    } else {
+      await dbRun(
+        `UPDATE users SET temp_password = 'CorrectPassword123', password_hash = 'CorrectPassword123' WHERE LOWER(email) = 'manager@example.com'`
       );
     }
   } catch (e) {

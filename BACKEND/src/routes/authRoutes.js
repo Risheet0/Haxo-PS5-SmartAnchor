@@ -168,17 +168,18 @@ router.post('/complete-signup', async (req, res, next) => {
     const existing = await dbGet(`SELECT id FROM users WHERE LOWER(email) = ?`, [normalizedEmail]);
 
     let userId;
+    const passHash = password ? String(password).trim() : null;
     if (existing) {
       await dbRun(
-        `UPDATE users SET name = ?, role = ?, email_verified = 1 WHERE LOWER(email) = ?`,
-        [name.trim(), userRole, normalizedEmail]
+        `UPDATE users SET name = ?, role = ?, password_hash = COALESCE(?, password_hash), email_verified = 1 WHERE LOWER(email) = ?`,
+        [name.trim(), userRole, passHash, normalizedEmail]
       );
       userId = existing.id;
     } else {
       const runResult = await dbRun(
-        `INSERT INTO users (name, email, role, email_verified, created_at)
-         VALUES (?, ?, ?, 1, ?)`,
-        [name.trim(), normalizedEmail, userRole, createdAt]
+        `INSERT INTO users (name, email, password_hash, role, email_verified, created_at)
+         VALUES (?, ?, ?, ?, 1, ?)`,
+        [name.trim(), normalizedEmail, passHash, userRole, createdAt]
       );
       userId = runResult.lastID;
     }
@@ -276,55 +277,65 @@ router.post('/login', async (req, res, next) => {
       });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const userRecord = await dbGet(`SELECT * FROM users WHERE LOWER(email) = ?`, [normalizedEmail]);
-
-    if (userRecord) {
-      const actualRole = userRecord.role || role || 'user';
-      const eventId = userRecord.event_id || 1;
-      const eventRecord = await dbGet(`SELECT * FROM events WHERE id = ?`, [eventId]);
-      const eventName = eventRecord?.name || 'TECHFEST 2026';
-
-      return res.status(200).json({
-        success: true,
-        user: {
-          id: `usr-${userRecord.id}`,
-          name: userRecord.name,
-          email: userRecord.email,
-          role: actualRole,
-          event_id: eventId,
-          eventId: eventId,
-          event_name: eventName,
-          organization: eventName,
-          organizationId: `org-${eventId}`,
-          email_verified: Boolean(userRecord.email_verified),
-          logged_in_at: new Date().toISOString()
-        }
+    if (!password || !String(password).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required to sign in.'
       });
     }
 
-    const resolvedRole = role === 'manager' || role === 'speaker' ? role : 'user';
-    const createdAt = new Date().toISOString();
-    const runResult = await dbRun(
-      `INSERT INTO users (name, email, role, event_id, email_verified, created_at)
-       VALUES (?, ?, ?, 1, 1, ?)`,
-      [normalizedEmail.split('@')[0], normalizedEmail, resolvedRole, createdAt]
-    );
+    const normalizedEmail = email.trim().toLowerCase();
+    const userRecord = await dbGet(`SELECT * FROM users WHERE LOWER(email) = ?`, [normalizedEmail]);
+
+    if (!userRecord) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password.'
+      });
+    }
+
+    const inputPass = String(password).trim();
+    const expectedTempPass = userRecord.temp_password ? String(userRecord.temp_password).trim() : null;
+    const expectedHashPass = userRecord.password_hash ? String(userRecord.password_hash).trim() : null;
+
+    if (!expectedTempPass && !expectedHashPass) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password.'
+      });
+    }
+
+    // Password Validation: Verify input password against temp_password or password_hash
+    const isPassValid =
+      (expectedTempPass && inputPass === expectedTempPass) ||
+      (expectedHashPass && inputPass === expectedHashPass);
+
+    if (!isPassValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password.'
+      });
+    }
+
+    const actualRole = userRecord.role || 'user';
+    const eventId = userRecord.event_id || 1;
+    const eventRecord = await dbGet(`SELECT * FROM events WHERE id = ?`, [eventId]);
+    const eventName = eventRecord?.name || 'TECHFEST 2026';
 
     return res.status(200).json({
       success: true,
       user: {
-        id: `usr-${runResult.lastID}`,
-        name: normalizedEmail.split('@')[0],
-        email: normalizedEmail,
-        role: resolvedRole,
-        event_id: 1,
-        eventId: 1,
-        event_name: 'TechFest 2026',
-        organization: 'TechFest 2026',
-        organizationId: 'org-1',
-        email_verified: true,
-        logged_in_at: createdAt
+        id: `usr-${userRecord.id}`,
+        name: userRecord.name,
+        email: userRecord.email,
+        role: actualRole,
+        event_id: eventId,
+        eventId: eventId,
+        event_name: eventName,
+        organization: eventName,
+        organizationId: `org-${eventId}`,
+        email_verified: Boolean(userRecord.email_verified),
+        logged_in_at: new Date().toISOString()
       }
     });
   } catch (err) {

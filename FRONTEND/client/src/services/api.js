@@ -138,23 +138,10 @@ export const api = {
         body: JSON.stringify(credentials)
       },
       () => {
-        const { email = 'user@example.com', role = 'user', name } = credentials;
-        const resolvedRole = role === 'manager' || role === 'speaker' ? role : 'user';
         return {
-          success: true,
-          user: {
-            id: `usr-${Date.now()}`,
-            name: name || (resolvedRole === 'speaker' ? 'Risheet' : resolvedRole === 'manager' ? 'Event Manager' : 'Alex Johnson'),
-            email: email.trim(),
-            role: resolvedRole,
-            event_id: 1,
-            eventId: 1,
-            event_name: 'TechFest 2026',
-            organization: 'TechFest 2026',
-            organizationId: 'org-1',
-            email_verified: true,
-            logged_in_at: new Date().toISOString()
-          }
+          success: false,
+          status: 401,
+          message: 'Invalid email or password.'
         };
       }
     );
