@@ -70,6 +70,20 @@ export const broadcastAnnouncementDismissed = ({ id }) => {
   }
 };
 
+export const broadcastRegistrationFormUpdated = ({ eventId, form }) => {
+  if (ioInstance) {
+    console.log(`[Socket] Broadcasting registration_form_updated for event #${eventId}`);
+    ioInstance.emit('registration_form_updated', { eventId, form });
+  }
+};
+
+export const broadcastRegistrationSubmitted = (registration) => {
+  if (ioInstance) {
+    console.log(`[Socket] Broadcasting registration_submitted: ${registration.user_name}`);
+    ioInstance.emit('registration_submitted', registration);
+  }
+};
+
 export const broadcastSystemReset = ({ event, agenda, speakers }) => {
   if (ioInstance) {
     console.log('[Socket] Broadcasting system_reset');

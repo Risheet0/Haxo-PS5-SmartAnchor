@@ -285,6 +285,17 @@ export const SEED_LOGS = [
   }
 ];
 
+export const DEFAULT_REGISTRATION_FIELDS = [
+  { id: 'full_name', label: 'Full Name', type: 'text', required: true, placeholder: 'e.g. Rahul Verma' },
+  { id: 'email', label: 'Email Address', type: 'email', required: true, placeholder: 'e.g. rahul@example.com' },
+  { id: 'mobile_number', label: 'Mobile Number', type: 'tel', required: true, placeholder: 'e.g. +91 98765 43210' },
+  { id: 'college', label: 'College / University', type: 'text', required: true, placeholder: 'e.g. IIT Bombay / L.D. College' },
+  { id: 'department', label: 'Department / Field of Study', type: 'text', required: true, placeholder: 'e.g. Computer Science / AI / IT' },
+  { id: 'year_semester', label: 'Year / Semester', type: 'select', required: false, options: ['1st Year', '2nd Year', '3rd Year', '4th Year / Final', 'Postgraduate / PhD', 'Working Professional'] },
+  { id: 'roll_number', label: 'College ID / Roll Number', type: 'text', required: false, placeholder: 'e.g. 21CS045' },
+  { id: 'dietary_notes', label: 'Dietary or Special Requirements', type: 'textarea', required: false, placeholder: 'Any accessibility or dietary preferences...' }
+];
+
 /**
  * Initialize Tables and Seed Initial Data if tables are empty
  */
@@ -364,6 +375,27 @@ export const initDB = async () => {
       word_count INTEGER,
       created_at TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS registration_forms (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_id INTEGER NOT NULL UNIQUE,
+      form_mode TEXT DEFAULT 'custom_form',
+      google_form_url TEXT DEFAULT '',
+      fields_json TEXT NOT NULL,
+      created_at TEXT,
+      updated_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS registrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_id INTEGER NOT NULL,
+      user_name TEXT NOT NULL,
+      user_email TEXT NOT NULL,
+      form_data_json TEXT NOT NULL,
+      registration_code TEXT NOT NULL,
+      status TEXT DEFAULT 'CONFIRMED',
+      registered_at TEXT NOT NULL
+    );
   `);
 
   // Check if events table has data
@@ -373,6 +405,15 @@ export const initDB = async () => {
     await resetToSeedData();
     console.log('[DB] ✅ Default dataset seeded successfully.');
   } else {
+    // Check if registration_form for event 1 exists
+    const existingForm = await dbGet(`SELECT id FROM registration_forms WHERE event_id = 1`);
+    if (!existingForm) {
+      await dbRun(
+        `INSERT INTO registration_forms (event_id, form_mode, google_form_url, fields_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [1, 'custom_form', '', JSON.stringify(DEFAULT_REGISTRATION_FIELDS), new Date().toISOString(), new Date().toISOString()]
+      );
+    }
     console.log('[DB] Existing SQLite dataset detected. Retaining state.');
   }
 };
@@ -387,7 +428,16 @@ export const resetToSeedData = async () => {
     DELETE FROM agenda;
     DELETE FROM announcements;
     DELETE FROM logs;
+    DELETE FROM registration_forms;
+    DELETE FROM registrations;
   `);
+
+  // Seed Registration Form
+  await dbRun(
+    `INSERT INTO registration_forms (event_id, form_mode, google_form_url, fields_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [1, 'custom_form', '', JSON.stringify(DEFAULT_REGISTRATION_FIELDS), new Date().toISOString(), new Date().toISOString()]
+  );
 
   // Seed Event
   await dbRun(

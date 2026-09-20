@@ -20,6 +20,7 @@ import speakerRoutes from './routes/speakerRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
+import registrationRoutes from './routes/registrationRoutes.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -53,6 +54,7 @@ app.get('/api/health', (req, res) => {
 
 // API Routes
 app.use('/api/events', eventRoutes);
+app.use('/api/events', registrationRoutes);
 app.use('/api/agenda', agendaRoutes);
 app.use('/api/speakers', speakerRoutes);
 app.use('/api/announcements', announcementRoutes);
