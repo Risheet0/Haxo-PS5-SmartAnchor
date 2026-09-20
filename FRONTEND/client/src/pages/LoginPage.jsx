@@ -1,18 +1,12 @@
 import React, { useState } from 'react';
 import SasmLogo from '../components/SasmLogo';
-import OtpVerification from '../components/auth/OtpVerification';
-import { sendLoginOtp } from '../services/authService';
-import { ArrowRight, Lock, Mail, User, Shield, RefreshCw } from 'lucide-react';
+import { ArrowRight, Lock, Mail, User, Shield } from 'lucide-react';
 
 export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const [selectedRole, setSelectedRole] = useState(null); // null | 'user' | 'manager'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  
-  // Login Steps: 'CREDENTIALS' | 'OTP_VERIFICATION'
-  const [step, setStep] = useState('CREDENTIALS');
-  const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleSelectRole = (role) => {
@@ -23,30 +17,21 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
     setErrorMessage('');
   };
 
-  const handleCredentialsSubmit = async (e) => {
+  const handleDirectLogin = (e) => {
     e.preventDefault();
     if (!selectedRole) return;
     if (!email || !email.trim()) {
       setErrorMessage('Please enter your registered email address.');
       return;
     }
+    if (!password) {
+      setErrorMessage('Please enter your password.');
+      return;
+    }
 
-    setLoading(true);
     setErrorMessage('');
 
-    try {
-      // Dispatch real SMTP login OTP from backend
-      await sendLoginOtp(email.trim(), selectedRole);
-      // Advance to OTP Verification Step
-      setStep('OTP_VERIFICATION');
-    } catch (err) {
-      setErrorMessage(err.message || 'Failed to send login verification code. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLoginOtpVerified = (verifiedData) => {
+    // Create Authenticated User Session
     const userSession = {
       id: 'usr-' + Date.now(),
       name: name.trim() || (selectedRole === 'manager' ? 'Event Manager' : 'Alex Johnson'),
@@ -62,7 +47,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       onLoginSuccess(userSession);
     }
 
-    // Role-based redirection rule
+    // Role-based navigation rule
     if (selectedRole === 'manager') {
       onNavigate('/manager');
     } else {
@@ -70,23 +55,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
     }
   };
 
-  // Render OTP Verification Step for Login
-  if (step === 'OTP_VERIFICATION') {
-    return (
-      <OtpVerification
-        signupData={{
-          name: name.trim() || (selectedRole === 'manager' ? 'Event Manager' : 'User'),
-          email: email.trim(),
-          role: selectedRole
-        }}
-        onVerified={handleLoginOtpVerified}
-        onChangeEmail={() => setStep('CREDENTIALS')}
-        onCancel={() => setStep('CREDENTIALS')}
-      />
-    );
-  }
-
-  // Render Step 1: Login Role & Credentials Form
   return (
     <div className="max-w-xl mx-auto px-4 py-12 sm:py-16 font-sans select-none animate-fade-in">
       <div className="p-8 sm:p-10 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-8">
@@ -125,7 +93,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               <button
                 type="button"
                 onClick={() => handleSelectRole('user')}
-                className="group p-6 rounded-2xl bg-slate-50 hover:bg-slate-950 hover:text-white border border-slate-200 text-left transition-all duration-200 space-y-3 shadow-xs flex flex-col justify-between"
+                className="group p-6 rounded-2xl bg-slate-50 hover:bg-slate-950 hover:text-white border border-slate-200 text-left transition-all duration-200 space-y-3 shadow-xs flex flex-col justify-between cursor-pointer"
               >
                 <div className="space-y-3">
                   <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-900 group-hover:bg-slate-800 group-hover:text-white group-hover:border-slate-700 flex items-center justify-center font-mono font-bold">
@@ -149,7 +117,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               <button
                 type="button"
                 onClick={() => handleSelectRole('manager')}
-                className="group p-6 rounded-2xl bg-slate-50 hover:bg-slate-950 hover:text-white border border-slate-200 text-left transition-all duration-200 space-y-3 shadow-xs flex flex-col justify-between"
+                className="group p-6 rounded-2xl bg-slate-50 hover:bg-slate-950 hover:text-white border border-slate-200 text-left transition-all duration-200 space-y-3 shadow-xs flex flex-col justify-between cursor-pointer"
               >
                 <div className="space-y-3">
                   <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-900 group-hover:bg-slate-800 group-hover:text-white group-hover:border-slate-700 flex items-center justify-center font-mono font-bold">
@@ -172,7 +140,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             </div>
           </div>
         ) : (
-          /* Step 2: Login Credentials Form */
+          /* Step 2: Direct Login Form for Selected Role (No OTP Required) */
           <div className="space-y-6 pt-2 font-mono text-xs">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -190,13 +158,13 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               <button
                 type="button"
                 onClick={() => setSelectedRole(null)}
-                className="text-[11px] text-slate-400 hover:text-slate-800 font-bold underline"
+                className="text-[11px] text-slate-400 hover:text-slate-800 font-bold underline cursor-pointer"
               >
                 Switch Role
               </button>
             </div>
 
-            <form onSubmit={handleCredentialsSubmit} className="space-y-4">
+            <form onSubmit={handleDirectLogin} className="space-y-4">
               <div>
                 <label className="block text-slate-700 font-bold uppercase mb-1">Full Name</label>
                 <div className="relative">
@@ -243,20 +211,10 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full py-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-mono font-bold text-xs uppercase tracking-wider transition active:scale-95 shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-mono font-bold text-xs uppercase tracking-wider transition active:scale-95 shadow-xs flex items-center justify-center gap-2 cursor-pointer mt-6"
               >
-                {loading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Sending Code...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Continue to Login Verification</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
+                <span>{selectedRole === 'manager' ? 'Open Manager Console' : 'Open User Dashboard'}</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </form>
           </div>
