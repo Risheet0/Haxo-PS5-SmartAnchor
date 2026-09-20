@@ -71,11 +71,9 @@ export default function OverviewPage({ onNavigate }) {
             <span>[ SASM PLATFORM ENGINE ]</span>
           </div>
 
-          {/* Connector Arrows (Desktop & Tablet) */}
-          <div className="hidden md:grid grid-cols-3 text-center text-slate-400 font-mono text-xs">
-            <div>┌──────────┴──────────┐</div>
-            <div>│</div>
-            <div>└──────────┬──────────┘</div>
+          {/* Clean Connector Line */}
+          <div className="flex flex-col items-center justify-center text-slate-300 my-1">
+            <div className="w-0.5 h-6 bg-slate-200" />
           </div>
 
           {/* 3 Pillars Grid */}

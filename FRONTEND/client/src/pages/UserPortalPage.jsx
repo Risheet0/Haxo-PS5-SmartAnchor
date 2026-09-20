@@ -10,7 +10,6 @@ import {
   Bookmark,
   LogOut,
   Building2,
-  Sparkles,
   Compass,
   Check,
   Globe,
