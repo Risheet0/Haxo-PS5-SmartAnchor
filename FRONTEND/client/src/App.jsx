@@ -328,6 +328,10 @@ ${
               agenda={agenda}
               speakers={speakers}
               logs={logs}
+              announcements={announcements}
+              connected={connected}
+              isTeleprompterOpen={isTeleprompterOpen}
+              isStageDisplayOpen={isStageDisplayOpen}
               onUpdateStatus={handleUpdateActivityStatus}
               onOpenDelay={(props) => {
                 setDelayModalProps(props || {});

@@ -111,7 +111,7 @@ export default function StageDisplayModal({
       role="dialog"
       aria-modal="true"
       aria-label="Stage Display Confidence Monitor"
-      className={`fixed inset-0 z-50 flex flex-col justify-between p-6 sm:p-12 md:p-16 lg:p-20 select-none animate-fade-in font-['Plus_Jakarta_Sans',sans-serif] ${
+      className={`fixed inset-0 z-50 flex flex-col justify-between p-4 sm:p-6 md:p-8 lg:p-10 overflow-y-auto select-none animate-fade-in font-['Plus_Jakarta_Sans',sans-serif] ${
         isDarkMode ? 'bg-[#000000] text-white' : 'bg-[#F8FAFC] text-slate-900'
       }`}
     >
@@ -119,16 +119,16 @@ export default function StageDisplayModal({
       {/* ─────────────────────────────────────────────────────────────
           1. TOP MINIMALIST HEADER & DISCREET OVERLAY CONTROLS
           ───────────────────────────────────────────────────────────── */}
-      <header className="flex items-start justify-between">
+      <header className="flex items-start justify-between flex-shrink-0">
         
         {/* Event Branding */}
         <div>
-          <h1 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black uppercase tracking-widest font-mono ${
+          <h1 className={`text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-widest font-mono ${
             isDarkMode ? 'text-white' : 'text-slate-900'
           }`}>
             {eventName}
           </h1>
-          <p className={`text-xs sm:text-sm md:text-base font-semibold mt-1 uppercase tracking-wider ${
+          <p className={`text-xs sm:text-sm font-semibold mt-1 uppercase tracking-wider ${
             isDarkMode ? 'text-slate-400' : 'text-slate-500'
           }`}>
             {eventVenue}
@@ -145,7 +145,7 @@ export default function StageDisplayModal({
           <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs sm:text-sm font-mono font-bold ${
             isDarkMode ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white border-slate-200 text-slate-700 shadow-xs'
           }`}>
-            <Clock className="w-4 h-4 text-indigo-600" />
+            <Clock className={`w-4 h-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
             <span>{currentTimeStr}</span>
           </div>
 
@@ -189,13 +189,13 @@ export default function StageDisplayModal({
           2. ACTIVE EMERGENCY STAGE OVERRIDE (IF ACTIVE)
           ───────────────────────────────────────────────────────────── */}
       {activeAnnouncement && activeAnnouncement.is_active === 1 && (
-        <div className="my-6 p-6 rounded-3xl bg-red-50 border-2 border-red-500 text-red-950 flex items-center gap-4 shadow-lg">
-          <AlertTriangle className="w-8 h-8 text-red-600 flex-shrink-0" />
+        <div className="my-4 p-5 rounded-2xl bg-red-50 border-2 border-red-500 text-red-950 flex items-center gap-4 shadow-lg flex-shrink-0">
+          <AlertTriangle className="w-7 h-7 text-red-600 flex-shrink-0" />
           <div>
             <span className="font-mono text-xs sm:text-sm font-black uppercase tracking-widest text-red-700 block mb-0.5">
               STAGE NOTICE:
             </span>
-            <p className="text-base sm:text-xl md:text-2xl font-bold text-red-950">
+            <p className="text-base sm:text-xl font-bold text-red-950">
               "{activeAnnouncement.ai_script || activeAnnouncement.original_prompt}"
             </p>
           </div>
@@ -205,17 +205,17 @@ export default function StageDisplayModal({
       {/* ─────────────────────────────────────────────────────────────
           3. MAIN STAGE HERO: LIVE NOW
           ───────────────────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col justify-center my-6 sm:my-10 space-y-4">
+      <main className="flex-1 flex flex-col justify-center my-4 sm:my-6 space-y-3">
         
         {/* Live Now Tag */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-600 text-white font-mono text-xs sm:text-sm md:text-base font-bold tracking-widest uppercase shadow-sm">
-            <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-600 text-white font-mono text-xs sm:text-sm font-bold tracking-widest uppercase shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
             <span>LIVE NOW</span>
           </div>
 
           {currentLive?.start_time && (
-            <span className={`text-xs sm:text-sm md:text-base font-mono font-bold uppercase tracking-wider ${
+            <span className={`text-xs sm:text-sm font-mono font-bold uppercase tracking-wider ${
               isDarkMode ? 'text-slate-400' : 'text-slate-500'
             }`}>
               {currentLive.start_time} - {currentLive.end_time}
@@ -224,7 +224,7 @@ export default function StageDisplayModal({
         </div>
 
         {/* Current Session Title (Massive high-contrast typography) */}
-        <h2 className={`text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight uppercase leading-[1.08] max-w-6xl ${
+        <h2 className={`text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight uppercase leading-[1.08] max-w-6xl ${
           isDarkMode ? 'text-white' : 'text-slate-900'
         }`}>
           {currentLive?.title || 'Main Stage Presentation'}
@@ -232,12 +232,14 @@ export default function StageDisplayModal({
 
         {/* Speaker Name / Dignitary */}
         {currentLive?.speaker_name && (
-          <div className="pt-2 sm:pt-4">
-            <p className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-indigo-700 tracking-tight">
+          <div className="pt-1 sm:pt-2">
+            <p className={`text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight ${
+              isDarkMode ? 'text-indigo-400 font-extrabold' : 'text-indigo-700'
+            }`}>
               {currentLive.speaker_name}
             </p>
             {currentLive.speaker_org && (
-              <p className={`text-sm sm:text-lg md:text-xl font-medium mt-1 ${
+              <p className={`text-xs sm:text-base md:text-lg font-medium mt-0.5 ${
                 isDarkMode ? 'text-slate-400' : 'text-slate-600'
               }`}>
                 {currentLive.speaker_org}
@@ -250,24 +252,24 @@ export default function StageDisplayModal({
       {/* ─────────────────────────────────────────────────────────────
           4. BOTTOM SECTION: NEXT UP
           ───────────────────────────────────────────────────────────── */}
-      <footer className={`pt-6 sm:pt-10 border-t ${
+      <footer className={`pt-4 sm:pt-6 border-t flex-shrink-0 ${
         isDarkMode ? 'border-white/10' : 'border-slate-200'
       }`}>
         {nextActivity ? (
           <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 sm:gap-6">
-            <div className="space-y-1">
-              <span className={`text-xs sm:text-sm md:text-base font-bold uppercase tracking-widest font-mono block ${
+            <div className="space-y-1 min-w-0 flex-1">
+              <span className={`text-xs sm:text-sm font-bold uppercase tracking-widest font-mono block ${
                 isDarkMode ? 'text-slate-400' : 'text-slate-500'
               }`}>
                 NEXT
               </span>
-              <h3 className={`text-xl sm:text-3xl md:text-4xl lg:text-5xl font-bold uppercase tracking-tight ${
+              <h3 className={`text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold uppercase tracking-tight truncate ${
                 isDarkMode ? 'text-slate-200' : 'text-slate-800'
               }`}>
                 {nextActivity.title}
               </h3>
               {nextActivity.speaker_name && (
-                <p className={`text-xs sm:text-base md:text-lg font-medium ${
+                <p className={`text-xs sm:text-base font-medium truncate ${
                   isDarkMode ? 'text-slate-400' : 'text-slate-600'
                 }`}>
                   {nextActivity.speaker_name}
@@ -276,13 +278,13 @@ export default function StageDisplayModal({
             </div>
 
             <div className="text-left sm:text-right font-mono flex-shrink-0">
-              <span className={`text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold block ${
+              <span className={`text-base sm:text-xl md:text-2xl lg:text-3xl font-bold block ${
                 isDarkMode ? 'text-slate-300' : 'text-slate-800'
               }`}>
                 {nextActivity.start_time}
               </span>
               {nextActivity.duration_minutes && (
-                <span className={`text-xs sm:text-sm font-semibold block ${
+                <span className={`text-xs font-semibold block ${
                   isDarkMode ? 'text-slate-400' : 'text-slate-500'
                 }`}>
                   {nextActivity.duration_minutes} min duration
@@ -291,7 +293,7 @@ export default function StageDisplayModal({
             </div>
           </div>
         ) : (
-          <div className={`flex items-center justify-between font-mono text-sm sm:text-base ${
+          <div className={`flex items-center justify-between font-mono text-xs sm:text-sm ${
             isDarkMode ? 'text-slate-400' : 'text-slate-500'
           }`}>
             <span className="uppercase tracking-wider">Final Session of the Day</span>

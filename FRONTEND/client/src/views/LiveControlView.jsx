@@ -27,6 +27,12 @@ import {
 } from 'lucide-react';
 import StatusBadge from '../components/ui/StatusBadge';
 import LiveTimerEngine from '../components/ui/LiveTimerEngine';
+import LiveStatusBar from '../components/live/LiveStatusBar';
+import ControlCenter from '../components/live/ControlCenter';
+import AttentionPanel from '../components/live/AttentionPanel';
+import SessionHealth from '../components/live/SessionHealth';
+import NextSpeakerPrep from '../components/live/NextSpeakerPrep';
+import EventTimeline from '../components/live/EventTimeline';
 import { formatTimer, getSpeakerAvatar, parseStageScript } from '../utils/formatters';
 import { api } from '../services/api';
 import { useToast } from '../components/ui/ToastContext';
@@ -38,6 +44,10 @@ export default function LiveControlView({
   agenda = [],
   speakers = [],
   logs = [],
+  announcements = [],
+  connected = true,
+  isTeleprompterOpen = false,
+  isStageDisplayOpen = false,
   onUpdateStatus,
   onOpenDelay,
   onOpenEmergency,
@@ -48,6 +58,9 @@ export default function LiveControlView({
 }) {
   const toast = useToast();
   const [isConfirmSkipOpen, setIsConfirmSkipOpen] = useState(false);
+  const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
+  const [isConfirmEndOpen, setIsConfirmEndOpen] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   // Current active session index
   const [activeSessionIndex, setActiveSessionIndex] = useState(() => {
     const liveIdx = agenda.findIndex(a => a.status === 'LIVE');
@@ -60,11 +73,31 @@ export default function LiveControlView({
   const nextActivity = activeSessionIndex + 1 < agenda.length ? agenda[activeSessionIndex + 1] : null;
   const prevActivity = activeSessionIndex > 0 ? agenda[activeSessionIndex - 1] : null;
 
-  // Real-time Timer Engine with Start/Pause/Resume
+  // Real-time Timer Engine with Start/Pause/Resume & Local Storage Persistence
   const durationMins = currentActivity?.duration_minutes || 30;
   const totalDurationSecs = durationMins * 60;
-  const [elapsedSecs, setElapsedSecs] = useState(18 * 60 + 42); // 18m 42s default
+  const [elapsedSecs, setElapsedSecs] = useState(() => {
+    if (currentActivity?.id) {
+      const saved = localStorage.getItem(`smartstage_elapsed_${currentActivity.id}`);
+      if (saved !== null) return parseInt(saved, 10);
+    }
+    return 18 * 60 + 42;
+  });
   const [isTimerRunning, setIsTimerRunning] = useState(true);
+
+  // Sync / persist elapsed time across page refreshes
+  useEffect(() => {
+    if (currentActivity?.id) {
+      const saved = localStorage.getItem(`smartstage_elapsed_${currentActivity.id}`);
+      if (saved !== null) setElapsedSecs(parseInt(saved, 10));
+    }
+  }, [currentActivity?.id]);
+
+  useEffect(() => {
+    if (currentActivity?.id) {
+      localStorage.setItem(`smartstage_elapsed_${currentActivity.id}`, elapsedSecs.toString());
+    }
+  }, [currentActivity?.id, elapsedSecs]);
 
   useEffect(() => {
     let interval = null;
@@ -171,15 +204,76 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
     window.speechSynthesis.speak(utterance);
   };
 
+  const handleUpdateStatusWithFeedback = async (id, status) => {
+    if (isUpdatingStatus || !id) return;
+    setIsUpdatingStatus(true);
+    try {
+      await onUpdateStatus(id, status);
+      if (status === 'LIVE') {
+        setIsTimerRunning(true);
+        toast.success('Session is now LIVE.');
+      } else if (status === 'PAUSED') {
+        setIsTimerRunning(false);
+        toast.info('Session timer paused.');
+      } else if (status === 'COMPLETED') {
+        setIsTimerRunning(false);
+        toast.success('Session marked COMPLETED.');
+      }
+    } catch (err) {
+      console.error('Error updating status:', err);
+      toast.error('Failed to update session status.');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleToggleTimer = async () => {
+    if (!currentActivity || isUpdatingStatus) return;
+    if (isTimerRunning && currentActivity.status === 'LIVE') {
+      await handleUpdateStatusWithFeedback(currentActivity.id, 'PAUSED');
+    } else {
+      await handleUpdateStatusWithFeedback(currentActivity.id, 'LIVE');
+    }
+  };
+
   const handleSkipActivity = async () => {
-    if (!currentActivity) return;
+    if (!currentActivity || isUpdatingStatus) return;
     setIsConfirmSkipOpen(false);
-    await onUpdateStatus(currentActivity.id, 'COMPLETED');
-    toast.success(`"${currentActivity.title}" marked completed.`);
+    await handleUpdateStatusWithFeedback(currentActivity.id, 'COMPLETED');
     if (nextActivity) {
-      await onUpdateStatus(nextActivity.id, 'LIVE');
+      await handleUpdateStatusWithFeedback(nextActivity.id, 'LIVE');
       setActiveSessionIndex(activeSessionIndex + 1);
       toast.info(`Moved to next session: "${nextActivity.title}".`);
+    }
+  };
+
+  const handleConfirmEndSession = async () => {
+    if (!currentActivity || isUpdatingStatus) return;
+    setIsConfirmEndOpen(false);
+    await handleUpdateStatusWithFeedback(currentActivity.id, 'COMPLETED');
+  };
+
+  const handleConfirmReset = () => {
+    setIsConfirmResetOpen(false);
+    setElapsedSecs(0);
+    setIsTimerRunning(false);
+    toast.info('Session timer reset to 00:00.');
+  };
+
+  const handleAdjustDuration = async (deltaMinutes) => {
+    if (!currentActivity || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    const currentMins = currentActivity.duration_minutes || 30;
+    const newDuration = Math.max(1, currentMins + deltaMinutes);
+    try {
+      await api.updateAgendaItem(currentActivity.id, { duration_minutes: newDuration });
+      toast.info(`Adjusted session duration by ${deltaMinutes > 0 ? '+' : ''}${deltaMinutes}m (${newDuration}m total).`);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Error adjusting duration:', err);
+      toast.error('Failed to adjust session duration.');
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -222,46 +316,100 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
     <div className="p-3 sm:p-5 lg:p-6 space-y-4 max-w-[1600px] mx-auto select-none animate-fade-in">
 
       {/* ─────────────────────────────────────────────────────────────
-          TOP CONTROL BAR: SESSION NAVIGATION & GLOBAL HUD
+          TOP CONTROL BAR: LIVE EVENT STATUS BAR
           ───────────────────────────────────────────────────────────── */}
-      <div className="p-3.5 rounded-2xl bg-white border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-900 uppercase tracking-wider font-mono">
-                STAGE MASTER CONSOLE
-              </span>
-              <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-red-50 text-red-700 border border-red-200">
-                SESSION #{currentActivity?.order_index || 1} OF {agenda.length}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500">
-              Live event operations, real-time anchor prompting, and delay cascading
-            </p>
+      <LiveStatusBar
+        event={event}
+        currentActivity={currentActivity}
+        activeSessionIndex={activeSessionIndex}
+        totalSessionsCount={agenda.length}
+        elapsedSecs={elapsedSecs}
+        totalDurationSecs={totalDurationSecs}
+        isTimerRunning={isTimerRunning}
+        connected={connected}
+        onOpenStageDisplay={onOpenStageDisplay}
+        onOpenDelay={onOpenDelay}
+      />
+
+      {/* DISCONNECTION ALERT BANNER */}
+      {!connected && (
+        <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 flex items-center justify-between text-xs font-medium animate-fade-in shadow-sm">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 animate-pulse" />
+            <span>
+              <strong>CONNECTION LOST:</strong> Reconnecting to real-time stage operations server... Remote telemetry paused.
+            </span>
           </div>
+          <span className="font-mono text-[10px] text-red-600 bg-red-100 border border-red-200 px-2 py-0.5 rounded font-bold">
+            OFFLINE MODE
+          </span>
         </div>
+      )}
 
-        {/* Global Shortcut Actions */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onOpenStageDisplay}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium transition shadow-sm"
-            title="Open Fullscreen Projector Confidence Monitor"
-          >
-            <Tv className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Confidence HUD</span>
-          </button>
+      {/* ─────────────────────────────────────────────────────────────
+          OPERATIONAL CONTROL CENTER (FULL WIDTH)
+          ───────────────────────────────────────────────────────────── */}
+      <ControlCenter
+        isTimerRunning={isTimerRunning}
+        currentActivity={currentActivity}
+        hasNextSession={Boolean(nextActivity)}
+        connected={connected}
+        isUpdatingStatus={isUpdatingStatus}
+        onToggleTimer={handleToggleTimer}
+        onResetTimer={() => setIsConfirmResetOpen(true)}
+        onAdjustDuration={handleAdjustDuration}
+        onNextSession={() => setIsConfirmSkipOpen(true)}
+        onOpenDelay={onOpenDelay}
+        onOpenEmergency={onOpenEmergency}
+        onOpenTeleprompter={() => onOpenTeleprompter && onOpenTeleprompter(scriptText)}
+        onOpenStageDisplay={onOpenStageDisplay}
+      />
 
-          <button
-            onClick={() => onOpenDelay({ targetActivityId: currentActivity?.id })}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold transition active:scale-95 shadow-sm"
-          >
-            <Hourglass className="w-3.5 h-3.5 text-amber-600" />
-            <span>+10m Delay</span>
-          </button>
-        </div>
+      {/* ─────────────────────────────────────────────────────────────
+          STEP 4 & STEP 5: OPERATIONAL ATTENTION & SESSION HEALTH PANELS
+          ───────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AttentionPanel
+          event={event}
+          currentActivity={currentActivity}
+          nextActivity={nextActivity}
+          elapsedSecs={elapsedSecs}
+          totalDurationSecs={totalDurationSecs}
+          connected={connected}
+          activeAnnouncement={announcements?.find(a => a.is_active === 1)}
+          onOpenEmergency={onOpenEmergency}
+          onOpenDelay={onOpenDelay}
+          onOpenStageDisplay={onOpenStageDisplay}
+        />
+
+        <SessionHealth
+          connected={connected}
+          isTimerRunning={isTimerRunning}
+          elapsedSecs={elapsedSecs}
+          totalDurationSecs={totalDurationSecs}
+          currentActivity={currentActivity}
+          scriptText={scriptText}
+          isTeleprompterOpen={isTeleprompterOpen}
+          isStageDisplayOpen={isStageDisplayOpen}
+          onOpenTeleprompter={onOpenTeleprompter}
+          onOpenStageDisplay={onOpenStageDisplay}
+          onToggleTimer={handleToggleTimer}
+        />
       </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          STEP 6: NEXT SPEAKER PREPARATION & BACKSTAGE CHECKLIST
+          ───────────────────────────────────────────────────────────── */}
+      <NextSpeakerPrep
+        nextActivity={nextActivity}
+        speakers={speakers}
+        onSelectNextScript={() => {
+          if (nextActivity && activeSessionIndex < agenda.length - 1) {
+            setActiveSessionIndex(activeSessionIndex + 1);
+            toast.info(`Switched anchor script view to next session: "${nextActivity.title}".`);
+          }
+        }}
+      />
 
       {/* ─────────────────────────────────────────────────────────────
           MASTER 3-COLUMN CONTROL ROOM LAYOUT
@@ -348,35 +496,32 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
               }}
             />
 
-            {/* Critical Operations Action Buttons */}
-            <div className="pt-2 border-t border-slate-200 space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                {currentActivity?.status !== 'LIVE' ? (
-                  <button
-                    onClick={() => onUpdateStatus(currentActivity.id, 'LIVE')}
-                    className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition active:scale-95 shadow-sm"
-                  >
-                    <Play className="w-4 h-4 fill-white" />
-                    <span>START</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => onUpdateStatus(currentActivity.id, 'COMPLETED')}
-                    className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition active:scale-95 shadow-sm"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>END SESSION</span>
-                  </button>
-                )}
-
+            {/* Session Action Footer */}
+            <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-mono text-[11px]">
+                Status: <span className="font-bold text-slate-900">{currentActivity?.status || 'LIVE'}</span>
+              </span>
+              {currentActivity?.status !== 'LIVE' ? (
                 <button
-                  onClick={() => onOpenDelay({ targetActivityId: currentActivity.id })}
-                  className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold transition active:scale-95"
+                  type="button"
+                  disabled={isUpdatingStatus}
+                  onClick={() => handleUpdateStatusWithFeedback(currentActivity.id, 'LIVE')}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-xs transition active:scale-95 shadow-sm flex items-center gap-1.5"
                 >
-                  <Hourglass className="w-4 h-4 text-amber-600" />
-                  <span>ADD DELAY</span>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>START SESSION</span>
                 </button>
-              </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isUpdatingStatus}
+                  onClick={() => setIsConfirmEndOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white font-bold text-xs transition active:scale-95 shadow-sm flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>END SESSION</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -573,70 +718,46 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
             )}
           </div>
 
-          {/* CRITICAL QUICK ACTIONS PANEL */}
+          {/* STAGE ACTIVITY LOG FEED */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2.5">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-slate-200">
-              <Layers className="w-3.5 h-3.5 text-indigo-600" />
-              Quick Operations
-            </h3>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+              <span className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                <Radio className="w-3.5 h-3.5 text-indigo-600" />
+                Stage Activity Feed
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">{logs.length} events</span>
+            </div>
 
-            <div className="grid grid-cols-1 gap-2">
-              <button
-                onClick={() => onOpenDelay({ targetActivityId: currentActivity?.id })}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold transition active:scale-98"
-              >
-                <div className="flex items-center gap-2">
-                  <Hourglass className="w-4 h-4 text-amber-600" />
-                  <span>+ Delay Schedule</span>
-                </div>
-                <span className="text-[10px] font-mono">+5m/+10m</span>
-              </button>
-
-              <button
-                onClick={onOpenEmergency}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-semibold transition active:scale-98"
-              >
-                <div className="flex items-center gap-2">
-                  <MessageSquarePlus className="w-4 h-4 text-blue-600" />
-                  <span>+ Announcement</span>
-                </div>
-                <span className="text-[10px] font-mono">AI Memo</span>
-              </button>
-
-              <button
-                onClick={onOpenEmergency}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold transition active:scale-98"
-              >
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-600" />
-                  <span>+ Emergency Alert</span>
-                </div>
-                <span className="text-[10px] font-mono">Broadcast</span>
-              </button>
-
-              <button
-                onClick={() => setIsConfirmSkipOpen(true)}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium transition active:scale-98 shadow-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <SkipForward className="w-4 h-4 text-slate-400" />
-                  <span>Next Session</span>
-                </div>
-                <span className="text-[10px] font-mono">Next &rarr;</span>
-              </button>
-
-              <button
-                onClick={() => setIsNoteModalOpen(true)}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium transition active:scale-98 shadow-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <StickyNote className="w-4 h-4 text-indigo-600" />
-                  <span>+ Stage Note</span>
-                </div>
-                <span className="text-[10px] font-mono">Cue</span>
-              </button>
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {logs.length > 0 ? (
+                logs.slice(0, 5).map((log) => (
+                  <div key={log.id} className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
+                      <span className="font-bold text-indigo-700 uppercase">{log.action_type || 'SYSTEM'}</span>
+                      <span>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <p className="text-slate-800 text-[11px] leading-tight font-medium">
+                      {log.message}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400 text-center py-2 font-mono">No stage logs recorded yet.</p>
+              )}
             </div>
           </div>
+
+          {/* STAGE NOTE QUICK CUE BUTTON */}
+          <button
+            onClick={() => setIsNoteModalOpen(true)}
+            className="w-full flex items-center justify-between p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold transition shadow-sm active:scale-98"
+          >
+            <div className="flex items-center gap-2">
+              <StickyNote className="w-4 h-4 text-indigo-600" />
+              <span>+ Add Stage Note / Cue</span>
+            </div>
+            <span className="text-[10px] font-mono text-slate-400">Attach Note</span>
+          </button>
 
           {/* MINI STAGE SCHEDULE QUEUE */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2.5">
@@ -676,6 +797,18 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
           </div>
         </div>
       </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          REAL-TIME EVENT TIMELINE (STEP 3)
+          ───────────────────────────────────────────────────────────── */}
+      <EventTimeline
+        agenda={agenda}
+        activeSessionIndex={activeSessionIndex}
+        elapsedSecs={elapsedSecs}
+        totalDurationSecs={totalDurationSecs}
+        currentDelayMinutes={event?.current_delay_minutes || 0}
+        onSelectSession={(idx) => setActiveSessionIndex(idx)}
+      />
 
       {/* ─────────────────────────────────────────────────────────────
           STAGE NOTE MODAL
@@ -738,8 +871,26 @@ Please join me in giving a tremendous round of applause for **${speakerName}**!"
         onClose={() => setIsConfirmSkipOpen(false)}
         onConfirm={handleSkipActivity}
         title="Advance to Next Session"
-        message={`Are you sure you want to conclude "${currentActivity?.title}" and immediately transition to the next agenda session?`}
+        message={`Are you sure you want to conclude "${currentActivity?.title}" and transition to the next agenda session? This will mark the current session as COMPLETED.`}
         confirmLabel="Advance Session"
+      />
+      {/* Confirmation dialog for resetting timer */}
+      <ConfirmDialog
+        isOpen={isConfirmResetOpen}
+        onClose={() => setIsConfirmResetOpen(false)}
+        onConfirm={handleConfirmReset}
+        title="Reset Session Timer"
+        message={`Are you sure you want to reset the live timer for "${currentActivity?.title}" back to 00:00? This action will reset the elapsed counter.`}
+        confirmLabel="Reset Timer"
+      />
+      {/* Confirmation dialog for concluding session */}
+      <ConfirmDialog
+        isOpen={isConfirmEndOpen}
+        onClose={() => setIsConfirmEndOpen(false)}
+        onConfirm={handleConfirmEndSession}
+        title="Conclude Active Session"
+        message={`Are you sure you want to mark "${currentActivity?.title}" as COMPLETED? Live controls for this session will end and the event schedule will advance.`}
+        confirmLabel="Conclude Session"
       />
     </div>
   );

@@ -33,6 +33,11 @@ export default function LiveTimerEngine({
     setTotalDurationSecs(durationMinutes * 60);
   }, [durationMinutes]);
 
+  // Sync running state if isRunning prop changes
+  useEffect(() => {
+    setRunning(isRunning);
+  }, [isRunning]);
+
   // Main 1-second operational tick loop
   useEffect(() => {
     let interval = null;
