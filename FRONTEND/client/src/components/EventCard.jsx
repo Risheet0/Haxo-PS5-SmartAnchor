@@ -1,23 +1,20 @@
 import React from 'react';
-import { MapPin, Calendar, Building2, ArrowRight } from 'lucide-react';
+import { MapPin, Calendar, Building2, ArrowRight, Layers } from 'lucide-react';
 
 /**
  * Reusable SASM Event Card Component
- * Follows clean black-and-white visual design system.
- * 
- * Layout:
- * [Event Image]
- * Event Name
- * Category Badge | Registration Status
- * Organizer & Institution
- * Location (City & Venue)
- * Date & Time
- * [View Event] Button
+ * Follows clean modern visual design system with Multi-Day Date & Venue support.
  */
 export default function EventCard({ event, onNavigate, isFeatured = false }) {
   if (!event) return null;
 
   const defaultImage = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80';
+  const isMultiDay = event.isMultiDay || (event.daySchedules && event.daySchedules.length > 1) || (event.endDate && event.endDate !== event.date);
+  const totalDays = event.totalDays || event.daySchedules?.length || 1;
+
+  const dateDisplay = isMultiDay
+    ? `Start: ${event.date} • End: ${event.endDate || event.date} (${totalDays}D)`
+    : `${event.date} ${event.startTime ? `• ${event.startTime}` : ''}`;
 
   return (
     <div
@@ -38,11 +35,20 @@ export default function EventCard({ event, onNavigate, isFeatured = false }) {
               e.target.src = defaultImage;
             }}
           />
-          {/* Overlay Status & Category Badges */}
+          {/* Overlay Status, Category & Multi-Day Badges */}
           <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-            <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-slate-950/85 text-white backdrop-blur-xs border border-white/20">
-              {event.category || 'Event'}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-slate-950/85 text-white backdrop-blur-xs border border-white/20">
+                {event.category || 'Event'}
+              </span>
+              {isMultiDay && (
+                <span className="px-2 py-1 rounded-md text-[10px] font-mono font-bold uppercase bg-indigo-600/90 text-white backdrop-blur-xs flex items-center gap-1 shadow-xs">
+                  <Layers className="w-3 h-3" />
+                  <span>{totalDays}D</span>
+                </span>
+              )}
+            </div>
+
             <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold uppercase bg-white/95 text-slate-900 shadow-xs backdrop-blur-xs border border-slate-200">
               {event.registrationStatus || 'OPEN'}
             </span>
@@ -76,17 +82,19 @@ export default function EventCard({ event, onNavigate, isFeatured = false }) {
             </p>
           )}
 
-          {/* Date, Time & City Meta */}
+          {/* Date, Time & Location Meta */}
           <div className="pt-3 border-t border-slate-100 space-y-1.5 text-xs text-slate-600 font-mono">
             <div className="flex items-center gap-1.5 truncate">
               <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
               <span className="truncate font-semibold text-slate-900">{event.city}</span>
-              {event.location && <span className="text-slate-400 truncate">• {event.location}</span>}
+              {event.venue && <span className="text-slate-400 truncate">• {event.venue}</span>}
             </div>
 
             <div className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
-              <span>{event.date} {event.startTime ? `• ${event.startTime}` : ''}</span>
+              <span className={`truncate ${isMultiDay ? 'font-bold text-indigo-950' : ''}`}>
+                {dateDisplay}
+              </span>
             </div>
           </div>
         </div>
@@ -95,7 +103,7 @@ export default function EventCard({ event, onNavigate, isFeatured = false }) {
       {/* Action Footer */}
       <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs font-mono">
         <span className="text-slate-500 font-bold uppercase tracking-wide text-[10px]">
-          {event.eventType || event.organizerType || 'General Event'}
+          {isMultiDay ? `${totalDays}-Day ${event.eventType || 'Event'}` : (event.eventType || event.organizerType || 'General Event')}
         </span>
         <button className="font-bold text-slate-950 group-hover:text-indigo-600 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
           <span>View Event</span>

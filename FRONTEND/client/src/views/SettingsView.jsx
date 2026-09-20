@@ -6,9 +6,7 @@ import {
   Check,
   Monitor,
   Sparkles,
-  Key,
-  Eye,
-  EyeOff,
+  ShieldCheck,
   ClipboardList
 } from 'lucide-react';
 import { api } from '../services/api';
@@ -21,11 +19,6 @@ export default function SettingsView({ event, onRefresh }) {
   const [soundAlerts, setSoundAlerts] = useState(true);
   const [resetting, setResetting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [geminiKey, setGeminiKey] = useState(
-    () => (typeof localStorage !== 'undefined' && localStorage.getItem('gemini_api_key')) || import.meta.env.VITE_GEMINI_API_KEY || ''
-  );
-  const [showKey, setShowKey] = useState(false);
-  const [keySaved, setKeySaved] = useState(false);
 
   const handleTestVoice = () => {
     if (!('speechSynthesis' in window)) {
@@ -222,8 +215,8 @@ export default function SettingsView({ event, onRefresh }) {
           </div>
         </div>
 
-        {/* Google Gemini AI Cloud Integration */}
-        <div className="p-6 soft-card space-y-5 md:col-span-2">
+        {/* Google Gemini AI Cloud Integration - Secure Server-Side Status */}
+        <div className="p-6 soft-card space-y-4 md:col-span-2">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-purple-600" />
@@ -231,56 +224,27 @@ export default function SettingsView({ event, onRefresh }) {
                 Google Gemini AI Cloud Engine
               </h3>
             </div>
-            <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
-              Active
+            <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              Secured &amp; Active
             </span>
           </div>
 
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-600 leading-relaxed">
             Smart Anchor connects directly to Google Gemini AI to generate live stage cues and professional anchor dialogue with real-time context. When offline or without a key, it automatically uses the built-in local engine.
           </p>
 
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5 text-purple-600" />
-              <span>Gemini API Key</span>
-            </label>
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  value={geminiKey}
-                  onChange={(e) => setGeminiKey(e.target.value)}
-                  placeholder="AIzaSy... or AQ.Ab8..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowKey(!showKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5 text-slate-700">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <div>
+                <span className="font-bold block text-slate-900">Enterprise Server-Side Isolation</span>
+                <span className="text-[11px] text-slate-500">API credentials and AI tokens are securely managed via backend environment variables.</span>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (typeof localStorage !== 'undefined') {
-                    localStorage.setItem('gemini_api_key', geminiKey.trim());
-                  }
-                  setKeySaved(true);
-                  setTimeout(() => setKeySaved(false), 2500);
-                }}
-                className="btn-pill-primary text-xs px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 font-bold shadow-sm"
-              >
-                {keySaved ? <Check className="w-3.5 h-3.5 text-white" /> : <Check className="w-3.5 h-3.5 text-white" />}
-                <span>{keySaved ? 'Saved!' : 'Save Key'}</span>
-              </button>
             </div>
-            <p className="text-[11px] text-slate-400">
-              Loaded securely from <code className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600">FRONTEND/client/.env</code>.
-            </p>
+            <span className="px-2.5 py-1 rounded-md bg-white border border-slate-200 font-mono text-[10px] font-bold text-slate-600 uppercase">
+              Protected
+            </span>
           </div>
         </div>
       </div>

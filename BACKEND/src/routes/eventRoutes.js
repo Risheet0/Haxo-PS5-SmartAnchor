@@ -13,6 +13,15 @@ const router = express.Router();
  */
 const formatEvent = (e) => {
   if (!e) return null;
+  let daySchedules = [];
+  if (e.day_schedules) {
+    try {
+      daySchedules = typeof e.day_schedules === 'string' ? JSON.parse(e.day_schedules) : e.day_schedules;
+    } catch {
+      daySchedules = [];
+    }
+  }
+
   return {
     id: e.id,
     name: e.name || e.title || 'Untitled Event',
@@ -23,7 +32,13 @@ const formatEvent = (e) => {
     organizer_type: e.organizer_type || 'Organization',
     organizerType: e.organizer_type || 'Organization',
     category: e.category || 'Technology',
+    is_multi_day: Boolean(e.is_multi_day || (daySchedules && daySchedules.length > 1)),
+    isMultiDay: Boolean(e.is_multi_day || (daySchedules && daySchedules.length > 1)),
+    total_days: e.total_days || daySchedules.length || 1,
+    totalDays: e.total_days || daySchedules.length || 1,
     date: e.date || new Date().toISOString().split('T')[0],
+    end_date: e.end_date || e.endDate || e.date,
+    endDate: e.end_date || e.endDate || e.date,
     start_time: e.start_time || '09:00 AM',
     startTime: e.start_time || '09:00 AM',
     end_time: e.end_time || '06:00 PM',
@@ -41,7 +56,9 @@ const formatEvent = (e) => {
     registrationDeadline: e.registration_deadline || '',
     status: e.status || 'UPCOMING',
     current_delay_minutes: e.current_delay_minutes || 0,
-    created_at: e.created_at || new Date().toISOString()
+    created_at: e.created_at || new Date().toISOString(),
+    day_schedules: daySchedules,
+    daySchedules: daySchedules
   };
 };
 
@@ -224,7 +241,13 @@ router.post('/', async (req, res, next) => {
       organizer,
       organizer_type = 'Organization',
       category = 'Technology',
+      is_multi_day,
+      isMultiDay,
+      total_days,
+      totalDays,
       date = new Date().toISOString().split('T')[0],
+      end_date,
+      endDate,
       start_time = '09:00 AM',
       startTime,
       end_time = '06:00 PM',
@@ -237,21 +260,27 @@ router.post('/', async (req, res, next) => {
       capacity = 500,
       eligibility = 'Open to all students & participants',
       status = 'LIVE',
-      registration_deadline = ''
+      registration_deadline = '',
+      day_schedules,
+      daySchedules
     } = req.body;
 
     const eventTitle = title || name || 'New Launched Event';
     const orgName = organizer || organizer_name || 'Event Host Committee';
     const sTime = startTime || start_time;
     const eTime = endTime || end_time;
+    const isMulti = Boolean(is_multi_day || isMultiDay || (day_schedules && day_schedules.length > 1) || (daySchedules && daySchedules.length > 1));
+    const schedules = day_schedules || daySchedules || [];
+    const tDays = total_days || totalDays || schedules.length || (isMulti ? 2 : 1);
+    const eDate = end_date || endDate || date;
 
     const result = await dbRun(
       `INSERT INTO events (
         name, title, description, organizer_name, organizer, organizer_type,
-        category, date, start_time, end_time, venue, room, city, location,
+        category, is_multi_day, total_days, date, end_date, start_time, end_time, venue, room, city, location,
         image, capacity, eligibility, registration_status, registration_deadline,
-        status, current_delay_minutes, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        status, current_delay_minutes, created_at, day_schedules
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         eventTitle,
         eventTitle,
@@ -260,7 +289,10 @@ router.post('/', async (req, res, next) => {
         orgName,
         organizer_type,
         category,
+        isMulti ? 1 : 0,
+        tDays,
         date,
+        eDate,
         sTime,
         eTime,
         venue,
@@ -274,7 +306,8 @@ router.post('/', async (req, res, next) => {
         registration_deadline,
         status,
         0,
-        new Date().toISOString()
+        new Date().toISOString(),
+        typeof schedules === 'string' ? schedules : JSON.stringify(schedules)
       ]
     );
 
@@ -331,7 +364,13 @@ router.put('/:id', async (req, res, next) => {
       organizer = current.organizer || current.organizer_name,
       organizer_type = current.organizer_type || 'Organization',
       category = current.category || 'Technology',
+      is_multi_day = current.is_multi_day,
+      isMultiDay,
+      total_days = current.total_days,
+      totalDays,
       date = current.date,
+      end_date = current.end_date || current.date,
+      endDate,
       start_time = current.start_time,
       end_time = current.end_time,
       venue = current.venue,
@@ -342,8 +381,15 @@ router.put('/:id', async (req, res, next) => {
       capacity = current.capacity,
       eligibility = current.eligibility,
       status = current.status,
-      current_delay_minutes = current.current_delay_minutes
+      current_delay_minutes = current.current_delay_minutes,
+      day_schedules = current.day_schedules,
+      daySchedules
     } = req.body;
+
+    const schedules = day_schedules || daySchedules || [];
+    const isMulti = isMultiDay !== undefined ? (isMultiDay ? 1 : 0) : (is_multi_day ? 1 : 0);
+    const eDate = endDate || end_date || date;
+    const tDays = totalDays || total_days || (Array.isArray(schedules) && schedules.length > 0 ? schedules.length : 1);
 
     await dbRun(
       `UPDATE events SET
@@ -354,7 +400,10 @@ router.put('/:id', async (req, res, next) => {
         organizer = ?,
         organizer_type = ?,
         category = ?,
+        is_multi_day = ?,
+        total_days = ?,
         date = ?,
+        end_date = ?,
         start_time = ?,
         end_time = ?,
         venue = ?,
@@ -365,7 +414,8 @@ router.put('/:id', async (req, res, next) => {
         capacity = ?,
         eligibility = ?,
         status = ?,
-        current_delay_minutes = ?
+        current_delay_minutes = ?,
+        day_schedules = ?
       WHERE id = ?`,
       [
         title || name,
@@ -375,7 +425,10 @@ router.put('/:id', async (req, res, next) => {
         organizer || organizer_name,
         organizer_type,
         category,
+        isMulti,
+        tDays,
         date,
+        eDate,
         start_time,
         end_time,
         venue,
@@ -387,6 +440,7 @@ router.put('/:id', async (req, res, next) => {
         eligibility,
         status,
         Number(current_delay_minutes) || 0,
+        typeof schedules === 'string' ? schedules : JSON.stringify(schedules),
         eventId
       ]
     );
