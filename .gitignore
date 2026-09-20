@@ -46,3 +46,10 @@ Thumbs.db
 .vite/
 **/vite/
 .cache/
+
+# Databases
+data/
+*.db
+*.db-wal
+*.db-shm
+
