@@ -372,125 +372,42 @@ export const api = {
   // 4. AI SCRIPT SYNTHESIS WORKSPACE (LIVE GEMINI + LOCAL ENGINE FALLBACK)
   // ─────────────────────────────────────────────────────────────────────────
   generateScript: async (payload) => {
-    const {
-      scriptType = 'Speaker Introduction',
-      tone = 'Professional',
-      length = 'Standard',
-      audience = 'Tech Community & Delegates',
-      customNotes = '',
-      speakerId,
-      topic: rawTopic
-    } = payload;
+    return fetchWithFallback(
+      `${API_BASE}/ai/generate`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      },
+      () => {
+        const {
+          scriptType = 'Speaker Introduction',
+          tone = 'Professional',
+          length = 'Standard',
+          audience = 'Tech Community & Delegates',
+          customNotes = '',
+          speakerId,
+          topic: rawTopic
+        } = payload;
 
-    const event = getMockStore('event', INITIAL_EVENT);
-    const speakers = getMockStore('speakers', INITIAL_SPEAKERS);
-    const agenda = getMockStore('agenda', INITIAL_AGENDA);
-    const eventName = event?.name || 'TECHFEST 2026';
-    const venue = event?.venue || 'Grand Convention Center';
+        const event = getMockStore('event', INITIAL_EVENT);
+        const speakers = getMockStore('speakers', INITIAL_SPEAKERS);
+        const agenda = getMockStore('agenda', INITIAL_AGENDA);
+        const eventName = event?.name || 'TECHFEST 2026';
+        const venue = event?.venue || 'Grand Convention Center';
 
-    // Resolve speaker details from payload or local store
-    const speaker = speakerId ? speakers.find(s => s.id === Number(speakerId)) : null;
-    const speakerName = payload.speakerName || speaker?.name || '';
-    const speakerOrg = payload.speakerOrg || speaker?.organization || '';
-    const speakerDesig = payload.speakerDesig || speaker?.designation || '';
-    const speakerBio = payload.speakerBio || speaker?.bio || '';
-    const speakerTopic = rawTopic || speaker?.topic || 'the next session';
-    const hasSpeakerInfo = Boolean(speakerName || speaker);
+        // Resolve speaker details
+        const speaker = speakerId ? speakers.find(s => s.id === Number(speakerId)) : null;
+        const speakerName = payload.speakerName || speaker?.name || 'our distinguished guest';
+        const speakerOrg = payload.speakerOrg || speaker?.organization || '';
+        const speakerDesig = payload.speakerDesig || speaker?.designation || '';
+        const speakerBio = payload.speakerBio || speaker?.bio || '';
+        const speakerTopic = rawTopic || speaker?.topic || 'the next session';
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // STEP 1: TRY LIVE GOOGLE GEMINI AI API (PRIMARY)
-    // ═══════════════════════════════════════════════════════════════════════
-    try {
-      const geminiKey =
-        (typeof localStorage !== 'undefined' && localStorage.getItem('gemini_api_key')) ||
-        import.meta.env.VITE_GEMINI_API_KEY ||
-        '';
-
-      if (geminiKey && geminiKey.length > 10 && geminiKey !== 'your_gemini_api_key_here') {
-        const lengthGuide = {
-          Short: 'Very concise, approx. 45-75 words. Punchy, focused, quick 30-45 seconds read with minimal stage cues.',
-          Standard: 'Medium length, approx. 140-220 words. Well-structured opening, core message, and warm closing with 2-3 stage cues.',
-          Detailed: 'Comprehensive and expansive, approx. 320-480 words. Rich storytelling, detailed stage cues [Stage Cue: ...], lighting/audio transitions, audience interaction, and grand introduction.'
-        }[length] || 'Medium length, 150-200 words.';
-
-        // Contextual activity details for transitions
-        const currAct = payload.currentActivityId ? agenda.find(a => a.id === Number(payload.currentActivityId)) : null;
-        const nextAct = payload.nextActivityId ? agenda.find(a => a.id === Number(payload.nextActivityId)) : null;
-        const transitionContext = currAct && nextAct
-          ? `\n- Transition Flow: Concluding "${currAct.title}" and introducing next segment "${nextAct.title}"`
-          : '';
-
-        const prompt = `You are an elite live stage anchor and emcee for "${eventName}" taking place at "${venue}".
-
-Generate an authentic, ready-to-speak live stage anchor script:
-- Script Type: ${scriptType}
-- Tone / Style: ${tone}
-- Target Length: ${length} (${lengthGuide})
-- Target Audience: ${audience}${transitionContext}
-${hasSpeakerInfo ? `- Featured Speaker: ${speakerName || 'Distinguished Guest'}${speakerDesig ? ` (${speakerDesig}${speakerOrg ? `, ${speakerOrg}` : ''})` : (speakerOrg ? ` (${speakerOrg})` : '')}
-${speakerBio ? `- Speaker Bio: ${speakerBio}\n` : ''}- Session Topic: ${speakerTopic}` : (speakerTopic ? `- Topic / Focus: ${speakerTopic}` : '')}
-${customNotes ? `- Special Talking Points / Custom Instructions: ${customNotes}` : ''}
-
-CRITICAL FORMATTING INSTRUCTIONS:
-1. Include realistic [Stage Cue: ...] brackets for physical actions, pacing, lighting/music cues, and audience interactions.
-2. Bold key speaker names, topics, and punchlines using markdown **bold**.
-3. Strictly respect the requested length (${length}).
-4. Output ONLY the anchor script and stage cues. No meta commentary or conversational filler.`;
-
-        // Try Gemini models in order of reliability
-        const candidateModels = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-flash-latest'];
-        for (const model of candidateModels) {
-          try {
-            console.log(`[Smart Anchor] Calling Gemini model: ${model}...`);
-            const geminiRes = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(geminiKey)}`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }],
-                  generationConfig: {
-                    temperature: 0.7,
-                    topP: 0.95
-                  }
-                })
-              }
-            );
-
-            if (geminiRes.ok) {
-              const data = await geminiRes.json();
-              const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (candidateText && candidateText.trim().length > 10) {
-                const scriptText = candidateText.trim();
-                console.log(`[Smart Anchor] ✅ Gemini ${model} returned ${scriptText.split(/\\s+/).length} words`);
-                return {
-                  script: scriptText,
-                  scriptType,
-                  tone,
-                  length,
-                  provider: `Google Gemini AI ⚡ Live`,
-                  wordCount: scriptText.split(/\s+/).filter(Boolean).length
-                };
-              }
-            } else {
-              console.warn(`[Smart Anchor] Model ${model} returned status ${geminiRes.status}`);
-            }
-          } catch (modelErr) {
-            console.warn(`[Smart Anchor] Model ${model} failed:`, modelErr.message);
-          }
-        }
-        console.warn('[Smart Anchor] All Gemini models failed, falling back to local engine');
-      } else {
-        console.log('[Smart Anchor] No API key found, using local engine');
-      }
-    } catch (apiErr) {
-      console.warn('[Smart Anchor] Gemini API error, falling back to local engine:', apiErr);
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // STEP 2: LOCAL SMART TEMPLATE SYNTHESIS ENGINE (OFFLINE FALLBACK)
-    // ═══════════════════════════════════════════════════════════════════════
-    const toneMap = {
+        // ═══════════════════════════════════════════════════════════════════════
+        // LOCAL SMART TEMPLATE SYNTHESIS ENGINE (OFFLINE FALLBACK)
+        // ═══════════════════════════════════════════════════════════════════════
+        const toneMap = {
       Professional: { greeting: 'Good morning', adj: 'distinguished', energy: 'confident', applause: 'warm round of applause' },
       Formal: { greeting: 'Respected dignitaries', adj: 'esteemed', energy: 'composed', applause: 'generous appreciation' },
       Friendly: { greeting: 'Hey everyone', adj: 'amazing', energy: 'relaxed', applause: 'big round of applause' },
@@ -878,17 +795,19 @@ Thank you for your incredible composure, cooperation, and trust. We will have yo
     const buildFn = typeBuilder[lengthKey] || typeBuilder['Standard'];
     const generated = buildFn();
 
-    return {
-      script: generated,
-      scriptType,
-      tone,
-      length: lengthKey,
-      provider: 'Intelligent Stage AI Engine (Offline Mode)',
-      wordCount: generated.split(/\s+/).filter(Boolean).length
-    };
-  },
+      return {
+        script: generated,
+        scriptType,
+        tone,
+        length: lengthKey,
+        provider: 'Intelligent Stage AI Engine (Offline Mode)',
+        wordCount: generated.split(/\s+/).filter(Boolean).length
+      };
+    }
+  );
+},
 
-  generateEmergencyAnnouncement: async (payload) => {
+generateEmergencyAnnouncement: async (payload) => {
     return api.generateScript({
       scriptType: 'Emergency Announcement',
       customNotes: payload?.rawNote || ''
