@@ -15,6 +15,8 @@ import {
   sortEventsByLocation
 } from '../services/sasmEventsData';
 import EventCard from '../components/EventCard';
+import { api } from '../services/api';
+import { getSocket } from '../services/socket';
 
 export default function EventsPage({ selectedCity = 'Ahmedabad', onSelectCity, onNavigate }) {
   // Read category query parameter if passed via URL (e.g., /events?category=Technology)
@@ -25,6 +27,7 @@ export default function EventsPage({ selectedCity = 'Ahmedabad', onSelectCity, o
 
   const [selectedOrgType, setSelectedOrgType] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [eventsList, setEventsList] = useState(SASM_MOCK_EVENTS);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -32,20 +35,56 @@ export default function EventsPage({ selectedCity = 'Ahmedabad', onSelectCity, o
     if (cat && EVENT_CATEGORIES.includes(cat)) {
       setSelectedCategory(cat);
     }
+
+    const loadEvents = async () => {
+      try {
+        const data = await api.getAllEvents();
+        if (Array.isArray(data) && data.length > 0) {
+          setEventsList(data);
+        }
+      } catch (err) {
+        console.warn('Failed to load events in EventsPage:', err);
+      }
+    };
+    loadEvents();
+
+    const socket = getSocket();
+    const handleNewEvent = (newEvent) => {
+      setEventsList((prev) => {
+        const exists = prev.some((e) => String(e.id) === String(newEvent.id));
+        if (exists) return prev.map((e) => (String(e.id) === String(newEvent.id) ? newEvent : e));
+        return [newEvent, ...prev];
+      });
+    };
+
+    socket.on('new_event_launched', handleNewEvent);
+    socket.on('event_created', handleNewEvent);
+    socket.on('event_updated', handleNewEvent);
+
+    return () => {
+      socket.off('new_event_launched', handleNewEvent);
+      socket.off('event_created', handleNewEvent);
+      socket.off('event_updated', handleNewEvent);
+    };
   }, []);
 
   // Apply location priority sorting
-  const sortedByLocation = sortEventsByLocation(SASM_MOCK_EVENTS, selectedCity);
+  const sortedByLocation = sortEventsByLocation(eventsList, selectedCity);
 
   // Apply search, category, and organizer filters
   const filteredEvents = sortedByLocation.filter((ev) => {
     const matchesCategory = selectedCategory === 'ALL' || ev.category === selectedCategory;
-    const matchesOrgType = selectedOrgType === 'ALL' || ev.organizerType === selectedOrgType;
+    const matchesOrgType = selectedOrgType === 'ALL' || (ev.organizerType || ev.organizer_type) === selectedOrgType;
+    const title = ev.title || ev.name || '';
+    const inst = ev.institution || ev.venue || '';
+    const city = ev.city || '';
+    const org = ev.organizer || ev.organizer_name || '';
+
     const matchesSearch =
-      ev.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ev.institution.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ev.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ev.organizer.toLowerCase().includes(searchQuery.toLowerCase());
+      title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      inst.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      org.toLowerCase().includes(searchQuery.toLowerCase());
 
     return matchesCategory && matchesOrgType && matchesSearch;
   });

@@ -49,14 +49,73 @@ const fetchWithFallback = async (url, options = {}, mockHandler) => {
   return await mockHandler();
 };
 
+import { SASM_MOCK_EVENTS } from './sasmEventsData';
+
 export const api = {
   // ─────────────────────────────────────────────────────────────────────────
   // 1. EVENT ENDPOINTS
   // ─────────────────────────────────────────────────────────────────────────
+  getAllEvents: async () => {
+    return fetchWithFallback(`${API_BASE}/events`, {}, () => {
+      return getMockStore('sasm_all_events', SASM_MOCK_EVENTS);
+    });
+  },
+
   getEvent: async () => {
     return fetchWithFallback(`${API_BASE}/events/current`, {}, () => {
       return getMockStore('event', INITIAL_EVENT);
     });
+  },
+
+  getEventById: async (id) => {
+    return fetchWithFallback(`${API_BASE}/events/${id}`, {}, () => {
+      const all = getMockStore('sasm_all_events', SASM_MOCK_EVENTS);
+      return all.find((e) => String(e.id) === String(id)) || all[0];
+    });
+  },
+
+  createEvent: async (eventData) => {
+    requireManagerRole(); // Security check
+    return fetchWithFallback(
+      `${API_BASE}/events`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData)
+      },
+      () => {
+        const all = getMockStore('sasm_all_events', SASM_MOCK_EVENTS);
+        const newEv = {
+          id: `sasm-ev-${Date.now()}`,
+          title: eventData.title || eventData.name || 'New Event',
+          name: eventData.name || eventData.title || 'New Event',
+          organizer: eventData.organizer || eventData.organizer_name || 'Event Host Committee',
+          organizerType: eventData.organizer_type || 'Organization',
+          category: eventData.category || 'Technology',
+          institution: eventData.venue || 'Grand Convention Center',
+          venue: eventData.venue || 'Grand Convention Center',
+          room: eventData.room || 'Main Auditorium',
+          city: eventData.city || 'Ahmedabad',
+          location: eventData.location || `${eventData.venue || 'Grand Convention Center'}, ${eventData.city || 'Ahmedabad'}`,
+          date: eventData.date || new Date().toISOString().split('T')[0],
+          startTime: eventData.startTime || eventData.start_time || '09:00 AM',
+          endTime: eventData.endTime || eventData.end_time || '06:00 PM',
+          eventType: eventData.eventType || 'Conference',
+          description: eventData.description || '',
+          eligibility: eventData.eligibility || 'Open to all students and participants',
+          registrationStatus: 'OPEN',
+          registrationDeadline: eventData.registration_deadline || '',
+          image: eventData.image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
+          tags: eventData.tags || ['Conference', 'Summit'],
+          capacity: Number(eventData.capacity) || 500,
+          featured: true,
+          status: 'LIVE'
+        };
+        const updated = [newEv, ...all];
+        setMockStore('sasm_all_events', updated);
+        return newEv;
+      }
+    );
   },
 
   updateEvent: async (data) => {

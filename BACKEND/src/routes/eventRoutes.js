@@ -1,8 +1,62 @@
 import express from 'express';
-import { dbGet, dbRun, resetToSeedData, dbAll } from '../config/db.js';
-import { broadcastEventUpdated, broadcastSystemReset } from '../services/socketService.js';
+import { dbGet, dbRun, resetToSeedData, dbAll, DEFAULT_REGISTRATION_FIELDS } from '../config/db.js';
+import {
+  broadcastEventUpdated,
+  broadcastNewEventLaunched,
+  broadcastSystemReset
+} from '../services/socketService.js';
 
 const router = express.Router();
+
+/**
+ * Format event object helper
+ */
+const formatEvent = (e) => {
+  if (!e) return null;
+  return {
+    id: e.id,
+    name: e.name || e.title || 'Untitled Event',
+    title: e.title || e.name || 'Untitled Event',
+    description: e.description || '',
+    organizer_name: e.organizer_name || e.organizer || 'Event Organizer',
+    organizer: e.organizer || e.organizer_name || 'Event Organizer',
+    organizer_type: e.organizer_type || 'Organization',
+    organizerType: e.organizer_type || 'Organization',
+    category: e.category || 'Technology',
+    date: e.date || new Date().toISOString().split('T')[0],
+    start_time: e.start_time || '09:00 AM',
+    startTime: e.start_time || '09:00 AM',
+    end_time: e.end_time || '06:00 PM',
+    endTime: e.end_time || '06:00 PM',
+    venue: e.venue || 'Grand Convention Center',
+    room: e.room || 'Main Auditorium',
+    city: e.city || 'Ahmedabad',
+    location: e.location || e.venue || 'Ahmedabad, Gujarat',
+    image: e.image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
+    capacity: e.capacity || 500,
+    eligibility: e.eligibility || 'Open to all students and attendees',
+    registration_status: e.registration_status || 'OPEN',
+    registrationStatus: e.registration_status || 'OPEN',
+    registration_deadline: e.registration_deadline || '',
+    registrationDeadline: e.registration_deadline || '',
+    status: e.status || 'UPCOMING',
+    current_delay_minutes: e.current_delay_minutes || 0,
+    created_at: e.created_at || new Date().toISOString()
+  };
+};
+
+/**
+ * GET /api/events
+ * Returns all events in the system
+ */
+router.get('/', async (req, res, next) => {
+  try {
+    const events = await dbAll(`SELECT * FROM events ORDER BY id ASC`);
+    res.json(events.map(formatEvent));
+  } catch (err) {
+    next(err);
+  }
+});
 
 /**
  * GET /api/events/current
@@ -10,36 +64,172 @@ const router = express.Router();
  */
 router.get('/current', async (req, res, next) => {
   try {
-    const event = await dbGet(`SELECT * FROM events WHERE id = 1`);
+    let event = await dbGet(`SELECT * FROM events WHERE status = 'LIVE' ORDER BY id DESC LIMIT 1`);
+    if (!event) {
+      event = await dbGet(`SELECT * FROM events ORDER BY id ASC LIMIT 1`);
+    }
     if (!event) {
       return res.status(404).json({ error: 'No active event found' });
     }
-    res.json(event);
+    res.json(formatEvent(event));
   } catch (err) {
     next(err);
   }
 });
 
 /**
- * PUT /api/events/current
- * Updates the current event details
+ * GET /api/events/:id
+ * Returns a specific event by ID
  */
-router.put('/current', async (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
-    const current = await dbGet(`SELECT * FROM events WHERE id = 1`);
+    const { id } = req.params;
+    if (id === 'current') {
+      const event = await dbGet(`SELECT * FROM events WHERE id = 1`);
+      return res.json(formatEvent(event));
+    }
+
+    const event = await dbGet(`SELECT * FROM events WHERE id = ? OR name = ?`, [id, id]);
+    if (!event) {
+      return res.status(404).json({ error: `Event with ID "${id}" not found` });
+    }
+    res.json(formatEvent(event));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/events
+ * Event Host launches/creates a new event
+ */
+router.post('/', async (req, res, next) => {
+  try {
+    const {
+      name,
+      title,
+      description = '',
+      organizer_name,
+      organizer,
+      organizer_type = 'Organization',
+      category = 'Technology',
+      date = new Date().toISOString().split('T')[0],
+      start_time = '09:00 AM',
+      startTime,
+      end_time = '06:00 PM',
+      endTime,
+      venue = 'Main Convention Center',
+      room = 'Main Hall',
+      city = 'Ahmedabad',
+      location = '',
+      image = '',
+      capacity = 500,
+      eligibility = 'Open to all students & participants',
+      status = 'LIVE',
+      registration_deadline = ''
+    } = req.body;
+
+    const eventTitle = title || name || 'New Launched Event';
+    const orgName = organizer || organizer_name || 'Event Host Committee';
+    const sTime = startTime || start_time;
+    const eTime = endTime || end_time;
+
+    const result = await dbRun(
+      `INSERT INTO events (
+        name, title, description, organizer_name, organizer, organizer_type,
+        category, date, start_time, end_time, venue, room, city, location,
+        image, capacity, eligibility, registration_status, registration_deadline,
+        status, current_delay_minutes, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        eventTitle,
+        eventTitle,
+        description,
+        orgName,
+        orgName,
+        organizer_type,
+        category,
+        date,
+        sTime,
+        eTime,
+        venue,
+        room,
+        city,
+        location || `${venue}, ${city}`,
+        image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
+        Number(capacity) || 500,
+        eligibility,
+        'OPEN',
+        registration_deadline,
+        status,
+        0,
+        new Date().toISOString()
+      ]
+    );
+
+    const createdEventId = result.lastID;
+
+    // Create default registration form config for this new event
+    await dbRun(
+      `INSERT INTO registration_forms (event_id, form_mode, google_form_url, fields_json, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        createdEventId,
+        'custom_form',
+        '',
+        JSON.stringify(DEFAULT_REGISTRATION_FIELDS),
+        new Date().toISOString(),
+        new Date().toISOString()
+      ]
+    );
+
+    const newEvent = await dbGet(`SELECT * FROM events WHERE id = ?`, [createdEventId]);
+    const formatted = formatEvent(newEvent);
+
+    // Log host action
+    await dbRun(
+      `INSERT INTO logs (action_type, message, timestamp) VALUES (?, ?, ?)`,
+      ['EVENT_LAUNCHED', `Host created and launched new event "${eventTitle}" (#${createdEventId}).`, new Date().toISOString()]
+    );
+
+    broadcastNewEventLaunched(formatted);
+    res.status(201).json(formatted);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /api/events/:id or /current
+ * Updates event details
+ */
+router.put('/:id', async (req, res, next) => {
+  try {
+    const eventId = req.params.id === 'current' ? 1 : req.params.id;
+    const current = await dbGet(`SELECT * FROM events WHERE id = ?`, [eventId]);
+
     if (!current) {
-      return res.status(404).json({ error: 'No active event found' });
+      return res.status(404).json({ error: `Event with ID "${eventId}" not found` });
     }
 
     const {
       name = current.name,
+      title = current.title || current.name,
       description = current.description,
       organizer_name = current.organizer_name,
+      organizer = current.organizer || current.organizer_name,
+      organizer_type = current.organizer_type || 'Organization',
+      category = current.category || 'Technology',
       date = current.date,
       start_time = current.start_time,
       end_time = current.end_time,
       venue = current.venue,
       room = current.room,
+      city = current.city || 'Ahmedabad',
+      location = current.location,
+      image = current.image,
+      capacity = current.capacity,
+      eligibility = current.eligibility,
       status = current.status,
       current_delay_minutes = current.current_delay_minutes
     } = req.body;
@@ -47,40 +237,60 @@ router.put('/current', async (req, res, next) => {
     await dbRun(
       `UPDATE events SET
         name = ?,
+        title = ?,
         description = ?,
         organizer_name = ?,
+        organizer = ?,
+        organizer_type = ?,
+        category = ?,
         date = ?,
         start_time = ?,
         end_time = ?,
         venue = ?,
         room = ?,
+        city = ?,
+        location = ?,
+        image = ?,
+        capacity = ?,
+        eligibility = ?,
         status = ?,
         current_delay_minutes = ?
-      WHERE id = 1`,
+      WHERE id = ?`,
       [
-        name,
+        title || name,
+        title || name,
         description,
-        organizer_name,
+        organizer || organizer_name,
+        organizer || organizer_name,
+        organizer_type,
+        category,
         date,
         start_time,
         end_time,
         venue,
         room,
+        city,
+        location || venue,
+        image || current.image,
+        Number(capacity) || current.capacity || 500,
+        eligibility,
         status,
-        Number(current_delay_minutes) || 0
+        Number(current_delay_minutes) || 0,
+        eventId
       ]
     );
 
-    const updatedEvent = await dbGet(`SELECT * FROM events WHERE id = 1`);
+    const updatedEvent = await dbGet(`SELECT * FROM events WHERE id = ?`, [eventId]);
+    const formatted = formatEvent(updatedEvent);
 
     // Log the update
     await dbRun(
       `INSERT INTO logs (action_type, message, timestamp) VALUES (?, ?, ?)`,
-      ['EVENT_UPDATED', `Event "${updatedEvent.name}" settings were updated.`, new Date().toISOString()]
+      ['EVENT_UPDATED', `Event "${formatted.title}" settings were updated.`, new Date().toISOString()]
     );
 
-    broadcastEventUpdated(updatedEvent);
-    res.json(updatedEvent);
+    broadcastEventUpdated(formatted);
+    res.json(formatted);
   } catch (err) {
     next(err);
   }
@@ -97,7 +307,7 @@ router.post('/reset-demo', async (req, res, next) => {
     const agenda = await dbAll(`SELECT * FROM agenda ORDER BY order_index ASC`);
     const speakers = await dbAll(`SELECT * FROM speakers ORDER BY id ASC`);
 
-    broadcastSystemReset({ event, agenda, speakers });
+    broadcastSystemReset({ event: formatEvent(event), agenda, speakers });
     res.json({ message: 'Demo data restored successfully' });
   } catch (err) {
     next(err);

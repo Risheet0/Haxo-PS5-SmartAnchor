@@ -306,13 +306,24 @@ export const initDB = async () => {
     CREATE TABLE IF NOT EXISTS events (
       id INTEGER PRIMARY KEY,
       name TEXT NOT NULL,
+      title TEXT,
       description TEXT,
       organizer_name TEXT,
+      organizer TEXT,
+      organizer_type TEXT DEFAULT 'Organization',
+      category TEXT DEFAULT 'Technology',
       date TEXT,
       start_time TEXT,
       end_time TEXT,
       venue TEXT,
       room TEXT,
+      city TEXT DEFAULT 'Ahmedabad',
+      location TEXT,
+      image TEXT,
+      capacity INTEGER DEFAULT 500,
+      eligibility TEXT,
+      registration_status TEXT DEFAULT 'OPEN',
+      registration_deadline TEXT,
       status TEXT DEFAULT 'LIVE',
       current_delay_minutes INTEGER DEFAULT 0,
       created_at TEXT
@@ -417,6 +428,32 @@ export const initDB = async () => {
       registered_at TEXT NOT NULL
     );
   `);
+
+  // Migrate missing columns if upgrading existing SQLite database
+  try {
+    const columns = await dbAll(`PRAGMA table_info(events)`);
+    const colNames = columns.map((c) => c.name);
+    const addIfMissing = async (name, type) => {
+      if (!colNames.includes(name)) {
+        try {
+          await dbRun(`ALTER TABLE events ADD COLUMN ${name} ${type}`);
+        } catch (e) {}
+      }
+    };
+    await addIfMissing('title', 'TEXT');
+    await addIfMissing('organizer', 'TEXT');
+    await addIfMissing('organizer_type', "TEXT DEFAULT 'Organization'");
+    await addIfMissing('category', "TEXT DEFAULT 'Technology'");
+    await addIfMissing('city', "TEXT DEFAULT 'Ahmedabad'");
+    await addIfMissing('location', 'TEXT');
+    await addIfMissing('image', 'TEXT');
+    await addIfMissing('capacity', 'INTEGER DEFAULT 500');
+    await addIfMissing('eligibility', 'TEXT');
+    await addIfMissing('registration_status', "TEXT DEFAULT 'OPEN'");
+    await addIfMissing('registration_deadline', 'TEXT');
+  } catch (err) {
+    console.warn('[DB] Column migration check notice:', err.message);
+  }
 
   // Check if events table has data
   const existingEvent = await dbGet(`SELECT id FROM events WHERE id = 1`);

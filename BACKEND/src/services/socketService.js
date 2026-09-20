@@ -21,6 +21,14 @@ export const broadcastEventUpdated = (event) => {
   }
 };
 
+export const broadcastNewEventLaunched = (event) => {
+  if (ioInstance) {
+    console.log(`[Socket] Broadcasting new_event_launched: "${event.name || event.title}"`);
+    ioInstance.emit('new_event_launched', event);
+    ioInstance.emit('event_created', event);
+  }
+};
+
 export const broadcastAgendaUpdated = (agenda = null) => {
   if (ioInstance) {
     console.log('[Socket] Broadcasting agenda_updated');
