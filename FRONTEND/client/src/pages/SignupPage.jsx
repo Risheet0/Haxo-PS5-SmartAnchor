@@ -97,36 +97,28 @@ export default function SignupPage({ onNavigate }) {
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-6">
         
         {/* Header & Logo */}
-        <div className="space-y-3 text-center">
+        <div className="space-y-2 text-center">
           <div className="flex justify-center">
             <SasmLogo size="md" onClick={() => onNavigate('/')} />
           </div>
 
-          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200 inline-block">
-            STEP 1 OF 3 • ACCOUNT DETAILS
-          </span>
-
-          <h1 className="text-xl sm:text-2xl font-black text-slate-950 uppercase tracking-tight pt-1">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight pt-1">
             Create SASM Account
           </h1>
-          
-          <p className="text-xs text-slate-600 font-sans leading-relaxed">
-            Join the universal event platform for attendees and event managers.
-          </p>
         </div>
 
         {/* Global Error Banner */}
         {formErrors.form && (
-          <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 font-mono text-xs">
+          <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs">
             {formErrors.form}
           </div>
         )}
 
-        <form onSubmit={handleFormSubmit} className="space-y-4 font-mono text-xs">
+        <form onSubmit={handleFormSubmit} className="space-y-4 text-xs">
           
           {/* Account Type / Role Selection */}
-          <div className="space-y-2">
-            <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+          <div className="space-y-1.5">
+            <label className="block text-slate-700 font-semibold text-xs">
               Account Type <span className="text-red-500">*</span>
             </label>
 
@@ -135,44 +127,34 @@ export default function SignupPage({ onNavigate }) {
               <button
                 type="button"
                 onClick={() => handleRoleSelect('user')}
-                className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between ${
+                className={`p-3 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
                   formData.role === 'user'
-                    ? 'bg-slate-950 text-white border-slate-950 shadow-xs'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs font-bold'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-100 font-medium'
                 }`}
               >
-                <div className="flex items-center justify-between w-full pb-1">
-                  <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs">
-                    <User className="w-4 h-4" />
-                    <span>User</span>
-                  </div>
-                  {formData.role === 'user' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  <span>User</span>
                 </div>
-                <p className={`text-[10px] font-sans leading-tight ${formData.role === 'user' ? 'text-slate-300' : 'text-slate-500'}`}>
-                  Discover and join events.
-                </p>
+                {formData.role === 'user' && <Check className="w-4 h-4 text-emerald-400" />}
               </button>
 
-              {/* Manager Role Card */}
+              {/* Host Role Card */}
               <button
                 type="button"
                 onClick={() => handleRoleSelect('manager')}
-                className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between ${
+                className={`p-3 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
                   formData.role === 'manager'
-                    ? 'bg-slate-950 text-white border-slate-950 shadow-xs'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs font-bold'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-100 font-medium'
                 }`}
               >
-                <div className="flex items-center justify-between w-full pb-1">
-                  <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs">
-                    <Shield className="w-4 h-4" />
-                    <span>Manager</span>
-                  </div>
-                  {formData.role === 'manager' && <Check className="w-3.5 h-3.5 text-indigo-400" />}
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  <span>Host</span>
                 </div>
-                <p className={`text-[10px] font-sans leading-tight ${formData.role === 'manager' ? 'text-slate-300' : 'text-slate-500'}`}>
-                  Conduct and manage events.
-                </p>
+                {formData.role === 'manager' && <Check className="w-4 h-4 text-emerald-400" />}
               </button>
             </div>
             {formErrors.role && <p className="text-[11px] text-red-600 font-semibold">{formErrors.role}</p>}
@@ -180,7 +162,7 @@ export default function SignupPage({ onNavigate }) {
 
           {/* Full Name Field */}
           <div>
-            <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px] mb-1">
+            <label className="block text-slate-700 font-semibold text-xs mb-1">
               Full Name <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -202,7 +184,7 @@ export default function SignupPage({ onNavigate }) {
 
           {/* Email Address Field */}
           <div>
-            <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px] mb-1">
+            <label className="block text-slate-700 font-semibold text-xs mb-1">
               Email Address <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -224,7 +206,7 @@ export default function SignupPage({ onNavigate }) {
 
           {/* Password Field */}
           <div>
-            <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px] mb-1">
+            <label className="block text-slate-700 font-semibold text-xs mb-1">
               Password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -253,7 +235,7 @@ export default function SignupPage({ onNavigate }) {
 
           {/* Confirm Password Field */}
           <div>
-            <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px] mb-1">
+            <label className="block text-slate-700 font-semibold text-xs mb-1">
               Confirm Password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -286,7 +268,7 @@ export default function SignupPage({ onNavigate }) {
           <button
             type="submit"
             disabled={isSubmittingForm}
-            className="w-full py-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-mono font-bold text-xs uppercase tracking-wider transition active:scale-95 shadow-sm flex items-center justify-center gap-2 mt-6 cursor-pointer"
+            className="w-full py-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition active:scale-95 shadow-sm flex items-center justify-center gap-2 mt-6 cursor-pointer"
           >
             {isSubmittingForm ? (
               <>
@@ -302,7 +284,7 @@ export default function SignupPage({ onNavigate }) {
           </button>
         </form>
 
-        <div className="pt-4 border-t border-slate-100 text-center text-xs text-slate-500 font-mono">
+        <div className="pt-4 border-t border-slate-100 text-center text-xs text-slate-500">
           Already registered?{' '}
           <button onClick={() => onNavigate('/login')} className="font-bold text-slate-950 hover:underline">
             Sign In

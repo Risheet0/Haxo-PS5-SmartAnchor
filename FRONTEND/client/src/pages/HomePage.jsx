@@ -96,13 +96,13 @@ export default function HomePage({
                 </button>
               </>
             ) : (
-              /* LOGGED IN MANAGER: Open Manager Dashboard */
+              /* LOGGED IN HOST: Open Host Dashboard */
               <button
                 onClick={() => onNavigate('/manager')}
                 className="px-6 py-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm transition flex items-center gap-2"
               >
                 <Shield className="w-4 h-4 text-indigo-400" />
-                <span>Open Manager Dashboard &rarr;</span>
+                <span>Open Host Dashboard &rarr;</span>
               </button>
             )}
           </div>
@@ -231,7 +231,7 @@ export default function HomePage({
                 onClick={() => onNavigate('/manager')}
                 className="px-6 py-3.5 rounded-xl bg-white text-slate-950 font-bold hover:bg-slate-100 transition shadow-xs"
               >
-                Launch Manager Console &rarr;
+                Launch Host Console &rarr;
               </button>
             )}
           </div>

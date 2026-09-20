@@ -77,10 +77,7 @@ export default function OtpVerification({
           </div>
 
           <div className="space-y-2">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-              STEP 3 OF 3 • VERIFIED
-            </span>
-            <h2 className="text-2xl font-black text-slate-950 uppercase tracking-tight pt-1">
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight pt-1">
               Email Verified
             </h2>
             <p className="text-xs text-slate-600 font-sans max-w-xs mx-auto leading-relaxed">
@@ -91,7 +88,7 @@ export default function OtpVerification({
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 font-mono text-xs text-slate-700 text-left space-y-1">
             <div className="flex justify-between text-slate-500 text-[11px]">
               <span>Account Type:</span>
-              <span className="font-bold text-slate-950 uppercase">{signupData.role}</span>
+              <span className="font-bold text-slate-950 uppercase">{signupData.role === 'manager' ? 'HOST' : signupData.role}</span>
             </div>
             <div className="flex justify-between text-slate-500 text-[11px]">
               <span>Account Holder:</span>
@@ -104,7 +101,7 @@ export default function OtpVerification({
             onClick={handleCompleteNext}
             className="w-full py-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-mono font-bold text-xs uppercase tracking-wider transition active:scale-95 shadow-sm flex items-center justify-center gap-2"
           >
-            <span>Continue to {signupData.role === 'manager' ? 'Manager Console' : 'User Portal'}</span>
+            <span>Continue to {signupData.role === 'manager' ? 'Host Console' : 'User Portal'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -118,21 +115,17 @@ export default function OtpVerification({
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-6">
         
         {/* Header & Logo */}
-        <div className="space-y-3 text-center">
+        <div className="space-y-2 text-center">
           <div className="flex justify-center">
             <SasmLogo size="md" />
           </div>
 
-          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200 inline-block">
-            STEP 2 OF 3 • EMAIL VERIFICATION
-          </span>
-
-          <h1 className="text-xl sm:text-2xl font-black text-slate-950 uppercase tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Verify Your Email
           </h1>
           
           <p className="text-xs text-slate-600 font-sans leading-relaxed">
-            We've sent a 6-digit verification code to your email address.
+            Enter the 6-digit verification code sent to your email.
           </p>
         </div>
 

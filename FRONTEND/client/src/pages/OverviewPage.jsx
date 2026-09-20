@@ -279,7 +279,7 @@ export default function OverviewPage({ onNavigate }) {
               className="px-5 py-3 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-mono font-bold text-xs transition flex items-center gap-2 shadow-xs"
             >
               <Shield className="w-4 h-4 text-indigo-400" />
-              <span>Manager Login &rarr;</span>
+              <span>Host Login &rarr;</span>
             </button>
           </div>
 
@@ -431,7 +431,7 @@ export default function OverviewPage({ onNavigate }) {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 font-mono text-xs">
           {[
-            '01. Manager Login',
+            '01. Host Login',
             '02. Create Event',
             '03. Add Info',
             '04. Publish Event',

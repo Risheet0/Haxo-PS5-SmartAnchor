@@ -37,10 +37,10 @@ export default function WhatIsSasmPage({ onNavigate }) {
 
         <div className="p-6 rounded-2xl bg-white border border-slate-200 space-y-3 shadow-xs">
           <h2 className="text-lg font-bold text-slate-950 font-sans uppercase tracking-tight">
-            3. Integrated Stage Operations for Managers
+            3. Integrated Stage Operations for Hosts
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans">
-            Event managers gain access to real-time execution tools: timer engines, delay cascading, anchor prompter routing, and stage confidence HUD monitors.
+            Event hosts gain access to real-time execution tools: timer engines, delay cascading, anchor prompter routing, and stage confidence HUD monitors.
           </p>
         </div>
       </div>
