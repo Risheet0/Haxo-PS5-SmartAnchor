@@ -13,6 +13,25 @@ import { shiftTimeString } from '../utils/formatters';
 const API_BASE = '/api';
 
 /**
+ * Role-Based Security Guard for Manager-Only Operations
+ */
+const requireManagerRole = () => {
+  try {
+    const saved = localStorage.getItem('sasm_user');
+    const user = saved ? JSON.parse(saved) : null;
+    if (!user || user.role !== 'manager') {
+      throw new Error('403 Forbidden: Manager authorization required for this action.');
+    }
+    return user;
+  } catch (err) {
+    if (err.message.includes('403 Forbidden')) {
+      throw err;
+    }
+    throw new Error('403 Forbidden: Manager authorization required.');
+  }
+};
+
+/**
  * Helper to attempt network fetch with seamless fallback to LocalStorage mock database
  */
 const fetchWithFallback = async (url, options = {}, mockHandler) => {
@@ -22,7 +41,7 @@ const fetchWithFallback = async (url, options = {}, mockHandler) => {
       return await res.json();
     }
   } catch (err) {
-    // Network failed or server offline -> silently use mock handler
+    // Network failed or server offline -> use mock handler
   }
   return mockHandler();
 };
@@ -38,6 +57,7 @@ export const api = {
   },
 
   updateEvent: async (data) => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/events/current`,
       {
@@ -55,6 +75,7 @@ export const api = {
   },
 
   resetDemoData: async () => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/events/reset-demo`,
       { method: 'POST' },
@@ -75,10 +96,12 @@ export const api = {
   },
 
   createActivity: async (data) => {
+    requireManagerRole(); // Security check
     return api.createAgendaItem(data);
   },
 
   createAgendaItem: async (data) => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/agenda`,
       {
@@ -116,6 +139,7 @@ export const api = {
   },
 
   updateAgendaItem: async (id, data) => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/agenda/${id}`,
       {
@@ -152,10 +176,12 @@ export const api = {
   },
 
   deleteActivity: async (id) => {
+    requireManagerRole(); // Security check
     return api.deleteAgendaItem(id);
   },
 
   deleteAgendaItem: async (id) => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/agenda/${id}`,
       { method: 'DELETE' },
@@ -169,6 +195,7 @@ export const api = {
   },
 
   updateActivityStatus: async (id, status) => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/agenda/${id}/status`,
       {
@@ -203,6 +230,7 @@ export const api = {
   },
 
   addDelay: async ({ minutes, targetActivityId, reason }) => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/agenda/delay`,
       {
@@ -254,6 +282,7 @@ export const api = {
   },
 
   reorderAgenda: async (items) => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/agenda/reorder`,
       {
@@ -278,6 +307,7 @@ export const api = {
   },
 
   createSpeaker: async (data) => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/speakers`,
       {
@@ -304,6 +334,7 @@ export const api = {
   },
 
   updateSpeaker: async (id, data) => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/speakers/${id}`,
       {
@@ -323,6 +354,7 @@ export const api = {
   },
 
   deleteSpeaker: async (id) => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/speakers/${id}`,
       { method: 'DELETE' },
@@ -476,6 +508,7 @@ We appreciate your cooperation as our operations team resumes our scheduled flow
   },
 
   createAnnouncement: async (data) => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/announcements`,
       {
@@ -501,6 +534,7 @@ We appreciate your cooperation as our operations team resumes our scheduled flow
   },
 
   dismissAnnouncement: async (id) => {
+    requireManagerRole(); // Security check
     return fetchWithFallback(
       `${API_BASE}/announcements/${id}/dismiss`,
       { method: 'POST' },
