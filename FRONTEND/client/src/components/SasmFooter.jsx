@@ -11,11 +11,10 @@ export default function SasmFooter({ onNavigate }) {
           <div className="md:col-span-1 space-y-4">
             <SasmLogo variant="dark" onClick={() => onNavigate && onNavigate('/')} />
             <p className="text-xs text-slate-400 font-medium leading-relaxed font-sans">
-              The platform for discovering, joining, and managing TechFest and technology-related events conducted by colleges, universities, companies, and student communities.
+              The universal platform for discovering, joining, and managing technology summits, college festivals, company hackathons, and community events across regions.
             </p>
             <div className="pt-2 font-mono text-xs text-slate-500">
-              <span>Primary Hub: </span>
-              <strong className="text-slate-300">Ahmedabad, Gujarat</strong>
+              <span>Universal Regional &amp; Multi-City Coverage</span>
             </div>
           </div>
 
@@ -27,12 +26,12 @@ export default function SasmFooter({ onNavigate }) {
             <ul className="space-y-2 text-xs text-slate-400">
               <li>
                 <button onClick={() => onNavigate && onNavigate('/events')} className="hover:text-white transition">
-                  Ahmedabad TechFests
+                  Technology Summits
                 </button>
               </li>
               <li>
                 <button onClick={() => onNavigate && onNavigate('/events')} className="hover:text-white transition">
-                  College Events
+                  College Festivals
                 </button>
               </li>
               <li>
@@ -42,7 +41,7 @@ export default function SasmFooter({ onNavigate }) {
               </li>
               <li>
                 <button onClick={() => onNavigate && onNavigate('/events')} className="hover:text-white transition">
-                  AI &amp; Coding Summits
+                  AI &amp; Coding Events
                 </button>
               </li>
             </ul>
@@ -85,12 +84,7 @@ export default function SasmFooter({ onNavigate }) {
             <ul className="space-y-2 text-xs text-slate-400">
               <li>
                 <button onClick={() => onNavigate && onNavigate('/user')} className="hover:text-white transition">
-                  User / Student Portal
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onNavigate && onNavigate('/manager')} className="hover:text-white transition text-indigo-400 font-bold">
-                  Manager Dashboard &amp; Stage Control &rarr;
+                  User Portal
                 </button>
               </li>
               <li>
@@ -109,9 +103,9 @@ export default function SasmFooter({ onNavigate }) {
 
         {/* Footer Bottom Line */}
         <div className="mt-12 pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 font-mono gap-3">
-          <p>© 2026 SASM Platform. All rights reserved. TechFest &amp; Technology Events Platform.</p>
+          <p>© 2026 SASM Platform. All rights reserved. Universal Events Platform.</p>
           <div className="flex items-center gap-4 text-slate-400">
-            <span>Built for Ahmedabad &amp; Beyond</span>
+            <span>Multi-City Event Network</span>
             <span>•</span>
             <span>Version 2.0</span>
           </div>
